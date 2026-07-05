@@ -20,7 +20,7 @@ The current model uses five criteria:
 - Finance: tuition cost and budget seats.
 - Support: dormitory and military training center availability.
 
-Important: “100 points for an olympiad subject” is approximated as a bonus to the aggregate exam score because the app currently stores only the total exam score, not individual subject scores.
+Important: "100 points for an olympiad subject" is approximated as a bonus to the aggregate exam score because the app currently stores only the total exam score, not individual subject scores.
 
 ## Getting started
 
@@ -38,6 +38,10 @@ Without `DATABASE_URL`, the app runs in local browser mode. To use PostgreSQL, s
 npm run db:push
 npm run dev
 ```
+
+## Windows quick start
+
+Double-click `start.bat` from the project folder. It checks Node.js, installs dependencies on the first launch, creates `.env.local` from `.env.example` when needed, opens http://localhost:3000, and starts the Next.js development server.
 
 ## Scripts
 
