@@ -3,6 +3,7 @@ import { ensureDatabaseSchema } from "@/db/ensure-schema";
 import { users } from "@/db/schema";
 import { databaseErrorResponse, logApiError } from "@/lib/api-responses";
 import { createSession, normalizeLogin, validatePassword, verifyPassword } from "@/lib/auth";
+import { rateLimit, rateLimitKey } from "@/lib/rate-limit";
 import { eq } from "drizzle-orm";
 import { NextResponse } from "next/server";
 
@@ -22,6 +23,14 @@ export async function POST(request: Request) {
   const body = (await request.json().catch(() => null)) as { login?: unknown; password?: unknown } | null;
   const login = normalizeLogin(body?.login);
   const password = validatePassword(body?.password);
+  const limit = rateLimit(rateLimitKey(request, "auth.login", login), 10, 60_000);
+
+  if (!limit.allowed) {
+    return NextResponse.json(
+      { error: "\u0421\u043b\u0438\u0448\u043a\u043e\u043c \u043c\u043d\u043e\u0433\u043e \u043f\u043e\u043f\u044b\u0442\u043e\u043a \u0432\u0445\u043e\u0434\u0430. \u041f\u043e\u0434\u043e\u0436\u0434\u0438\u0442\u0435 \u0438 \u043f\u043e\u043f\u0440\u043e\u0431\u0443\u0439\u0442\u0435 \u0441\u043d\u043e\u0432\u0430." },
+      { status: 429, headers: { "Retry-After": String(limit.retryAfterSeconds) } },
+    );
+  }
 
   try {
     const [user] = await database

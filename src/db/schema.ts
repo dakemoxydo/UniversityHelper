@@ -41,7 +41,9 @@ export const profiles = pgTable("profiles", {
 
 export const universities = pgTable("universities", {
   id: serial("id").primaryKey(),
-  userId: integer("user_id").references(() => users.id, { onDelete: "cascade" }),
+  userId: integer("user_id")
+    .notNull()
+    .references(() => users.id, { onDelete: "cascade" }),
   name: text("name").notNull(),
   city: text("city").notNull().default(""),
   hasMilitaryDepartment: boolean("has_military_department").notNull().default(false),

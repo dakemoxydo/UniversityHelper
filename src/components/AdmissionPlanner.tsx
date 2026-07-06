@@ -199,8 +199,41 @@ async function readApiJson<T>(response: Response): Promise<T> {
     return {} as T;
   }
 }
+
+class ApiError extends Error {
+  constructor(
+    message: string,
+    readonly status: number,
+  ) {
+    super(message);
+  }
+}
+
+function safeSetLocalStorage(key: string, value: unknown) {
+  try {
+    window.localStorage.setItem(key, JSON.stringify(value));
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function createLocalId() {
+  if (typeof window !== "undefined" && window.crypto?.getRandomValues) {
+    const values = new Uint32Array(1);
+    window.crypto.getRandomValues(values);
+    return -Number(values[0] || Date.now());
+  }
+
+  return -Date.now();
+}
+
+function shouldFallbackToLocalStorage(error: unknown) {
+  return !(error instanceof ApiError) || error.status === 503;
+}
+
 function localUniversityFromDraft(input: UniversityInput, previous?: University): University {
-  const universityId = previous?.id ?? Date.now();
+  const universityId = previous?.id ?? createLocalId();
 
   return {
     ...input,
@@ -208,7 +241,7 @@ function localUniversityFromDraft(input: UniversityInput, previous?: University)
     createdAt: previous?.createdAt ?? new Date().toISOString(),
     specialties: input.specialties.map((specialty, index) => ({
       ...specialty,
-      id: specialty.id ?? previous?.specialties[index]?.id ?? universityId + index + 1,
+      id: specialty.id ?? previous?.specialties[index]?.id ?? createLocalId() - index - 1,
       universityId,
     })),
   };
@@ -335,25 +368,25 @@ export default function AdmissionPlanner() {
 
   useEffect(() => {
     if (!isLoading) {
-      window.localStorage.setItem(profileStorageKey, JSON.stringify(cleanSubjects));
+      safeSetLocalStorage(profileStorageKey, cleanSubjects);
     }
   }, [cleanSubjects, isLoading]);
 
   useEffect(() => {
     if (!isLoading) {
-      window.localStorage.setItem(priorityOrderStorageKey, JSON.stringify(priorityOrder));
+      safeSetLocalStorage(priorityOrderStorageKey, priorityOrder);
     }
   }, [isLoading, priorityOrder]);
 
   useEffect(() => {
     if (!isLoading) {
-      window.localStorage.setItem(disabledCriteriaStorageKey, JSON.stringify(disabledCriteria));
+      safeSetLocalStorage(disabledCriteriaStorageKey, disabledCriteria);
     }
   }, [disabledCriteria, isLoading]);
 
   useEffect(() => {
     if (isLocalMode && !isLoading) {
-      window.localStorage.setItem(localStorageKey, JSON.stringify(universities));
+      safeSetLocalStorage(localStorageKey, universities);
     }
   }, [isLocalMode, isLoading, universities]);
   useEffect(() => {
@@ -362,11 +395,24 @@ export default function AdmissionPlanner() {
     }
 
     const timer = window.setTimeout(() => {
-      void fetch("/api/profile", {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ examSubjects: cleanSubjects, priorityOrder, disabledCriteria }),
-      });
+      async function saveProfile() {
+        try {
+          const response = await fetch("/api/profile", {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ examSubjects: cleanSubjects, priorityOrder, disabledCriteria }),
+          });
+          const data = await readApiJson<{ error?: string }>(response);
+
+          if (!response.ok) {
+            throw new Error(data.error ?? "\u041d\u0435 \u0443\u0434\u0430\u043b\u043e\u0441\u044c \u0441\u043e\u0445\u0440\u0430\u043d\u0438\u0442\u044c \u043f\u0440\u043e\u0444\u0438\u043b\u044c.");
+          }
+        } catch (profileSaveError) {
+          setError(profileSaveError instanceof Error ? profileSaveError.message : "\u041d\u0435 \u0443\u0434\u0430\u043b\u043e\u0441\u044c \u0441\u043e\u0445\u0440\u0430\u043d\u0438\u0442\u044c \u043f\u0440\u043e\u0444\u0438\u043b\u044c.");
+        }
+      }
+
+      void saveProfile();
     }, 500);
 
     return () => window.clearTimeout(timer);
@@ -527,7 +573,7 @@ export default function AdmissionPlanner() {
     const cleaned = cleanDraft(draft);
 
     if (!cleaned.name || cleaned.specialties.length === 0) {
-      setError("Добавьте название вуза и хотя бы один профиль обучения.");
+      setError("\u0414\u043e\u0431\u0430\u0432\u044c\u0442\u0435 \u043d\u0430\u0437\u0432\u0430\u043d\u0438\u0435 \u0432\u0443\u0437\u0430 \u0438 \u0445\u043e\u0442\u044f \u0431\u044b \u043e\u0434\u0438\u043d \u043f\u0440\u043e\u0444\u0438\u043b\u044c \u043e\u0431\u0443\u0447\u0435\u043d\u0438\u044f.");
       return;
     }
 
@@ -553,18 +599,23 @@ export default function AdmissionPlanner() {
       const data = await readApiJson<{ university?: University; error?: string }>(response);
 
       if (!response.ok || !data.university) {
-        throw new Error(data.error ?? "Не удалось сохранить университет.");
+        throw new ApiError(data.error ?? "\u041d\u0435 \u0443\u0434\u0430\u043b\u043e\u0441\u044c \u0441\u043e\u0445\u0440\u0430\u043d\u0438\u0442\u044c \u0443\u043d\u0438\u0432\u0435\u0440\u0441\u0438\u0442\u0435\u0442.", response.status);
       }
 
       setUniversities((current) => (editingUniversityId === null ? [data.university!, ...current] : current.map((university) => (university.id === editingUniversityId ? data.university! : university))));
       setIsLocalMode(false);
-    } catch (saveError) {
-      const localUniversity = localUniversityFromDraft(cleaned, previousUniversity);
-      setUniversities((current) => (editingUniversityId === null ? [localUniversity, ...current] : current.map((university) => (university.id === editingUniversityId ? localUniversity : university))));
-      setIsLocalMode(true);
-      setError(saveError instanceof Error ? `${saveError.message} Изменения сохранены локально.` : "Изменения сохранены локально.");
-    } finally {
       resetForm();
+    } catch (saveError) {
+      if (shouldFallbackToLocalStorage(saveError)) {
+        const localUniversity = localUniversityFromDraft(cleaned, previousUniversity);
+        setUniversities((current) => (editingUniversityId === null ? [localUniversity, ...current] : current.map((university) => (university.id === editingUniversityId ? localUniversity : university))));
+        setIsLocalMode(true);
+        setError(saveError instanceof Error ? `${saveError.message} \u0418\u0437\u043c\u0435\u043d\u0435\u043d\u0438\u044f \u0441\u043e\u0445\u0440\u0430\u043d\u0435\u043d\u044b \u043b\u043e\u043a\u0430\u043b\u044c\u043d\u043e.` : "\u0418\u0437\u043c\u0435\u043d\u0435\u043d\u0438\u044f \u0441\u043e\u0445\u0440\u0430\u043d\u0435\u043d\u044b \u043b\u043e\u043a\u0430\u043b\u044c\u043d\u043e.");
+        resetForm();
+      } else {
+        setError(saveError instanceof Error ? saveError.message : "\u041d\u0435 \u0443\u0434\u0430\u043b\u043e\u0441\u044c \u0441\u043e\u0445\u0440\u0430\u043d\u0438\u0442\u044c \u0443\u043d\u0438\u0432\u0435\u0440\u0441\u0438\u0442\u0435\u0442.");
+      }
+    } finally {
       setIsSaving(false);
     }
   }
@@ -572,13 +623,13 @@ export default function AdmissionPlanner() {
   async function deleteUniversity(id: number) {
     const university = universities.find((item) => item.id === id);
 
-    if (!window.confirm(`Удалить ${university?.name ?? "этот вуз"} и все его профили?`)) {
+    if (!window.confirm(`\u0423\u0434\u0430\u043b\u0438\u0442\u044c ${university?.name ?? "\u044d\u0442\u043e\u0442 \u0432\u0443\u0437"} \u0438 \u0432\u0441\u0435 \u0435\u0433\u043e \u043f\u0440\u043e\u0444\u0438\u043b\u0438?`)) {
       return;
     }
 
     setError(null);
 
-    if (isGuestMode) {
+    if (isGuestMode || isLocalMode) {
       setUniversities((current) => current.filter((university) => university.id !== id));
       if (editingUniversityId === id) {
         resetForm();
@@ -591,16 +642,15 @@ export default function AdmissionPlanner() {
       const data = await readApiJson<{ error?: string }>(response);
 
       if (!response.ok) {
-        throw new Error(data.error ?? "Не удалось удалить университет.");
+        throw new Error(data.error ?? "\u041d\u0435 \u0443\u0434\u0430\u043b\u043e\u0441\u044c \u0443\u0434\u0430\u043b\u0438\u0442\u044c \u0443\u043d\u0438\u0432\u0435\u0440\u0441\u0438\u0442\u0435\u0442.");
       }
-    } catch (deleteError) {
-      setIsLocalMode(true);
-      setError(deleteError instanceof Error ? deleteError.message : "Не удалось удалить университет.");
-    } finally {
+
       setUniversities((current) => current.filter((university) => university.id !== id));
       if (editingUniversityId === id) {
         resetForm();
       }
+    } catch (deleteError) {
+      setError(deleteError instanceof Error ? deleteError.message : "\u041d\u0435 \u0443\u0434\u0430\u043b\u043e\u0441\u044c \u0443\u0434\u0430\u043b\u0438\u0442\u044c \u0443\u043d\u0438\u0432\u0435\u0440\u0441\u0438\u0442\u0435\u0442.");
     }
   }
   if (isAuthLoading) {

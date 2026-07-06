@@ -32,7 +32,7 @@ CREATE TABLE IF NOT EXISTS "profiles" (
 
 CREATE TABLE IF NOT EXISTS "universities" (
   "id" serial PRIMARY KEY,
-  "user_id" integer,
+  "user_id" integer NOT NULL,
   "name" text NOT NULL,
   "city" text NOT NULL DEFAULT '',
   "has_military_department" boolean NOT NULL DEFAULT false,
@@ -42,6 +42,8 @@ CREATE TABLE IF NOT EXISTS "universities" (
 );
 
 ALTER TABLE "universities" ADD COLUMN IF NOT EXISTS "user_id" integer;
+DELETE FROM "universities" WHERE "user_id" IS NULL;
+ALTER TABLE "universities" ALTER COLUMN "user_id" SET NOT NULL;
 
 CREATE TABLE IF NOT EXISTS "specialties" (
   "id" serial PRIMARY KEY,
@@ -81,6 +83,10 @@ END $$;
 `;
 
 export async function ensureDatabaseSchema() {
+  if (process.env.NODE_ENV === "production" && process.env.ALLOW_RUNTIME_SCHEMA_SYNC !== "true") {
+    return;
+  }
+
   if (!pool) {
     throw new Error("DATABASE_URL is required to initialize database schema.");
   }
