@@ -219,6 +219,7 @@ export default function AdmissionPlanner() {
   const [isSaving, setIsSaving] = useState(false);
   const [isLocalMode, setIsLocalMode] = useState(false);
   const [currentUser, setCurrentUser] = useState<AuthUser | null>(null);
+  const [isGuestMode, setIsGuestMode] = useState(false);
   const [isAuthLoading, setIsAuthLoading] = useState(true);
   const [authMode, setAuthMode] = useState<"login" | "register">("login");
   const [authLogin, setAuthLogin] = useState("");
@@ -245,6 +246,7 @@ export default function AdmissionPlanner() {
         }
 
         setCurrentUser(data.user ?? null);
+        setIsGuestMode(false);
       } catch (sessionError) {
         setAuthError(sessionError instanceof Error ? sessionError.message : "Не удалось проверить вход.");
         setCurrentUser(null);
@@ -258,7 +260,7 @@ export default function AdmissionPlanner() {
   }, []);
 
   useEffect(() => {
-    if (!currentUser) {
+    if (!currentUser || isGuestMode) {
       return;
     }
 
@@ -319,7 +321,7 @@ export default function AdmissionPlanner() {
     return () => {
       cancelled = true;
     };
-  }, [currentUser]);
+  }, [currentUser, isGuestMode]);
 
   useEffect(() => {
     if (!isLoading) {
@@ -345,7 +347,7 @@ export default function AdmissionPlanner() {
     }
   }, [isLocalMode, isLoading, universities]);
   useEffect(() => {
-    if (!currentUser || isLoading) {
+    if (!currentUser || isGuestMode || isLoading) {
       return;
     }
 
@@ -358,7 +360,7 @@ export default function AdmissionPlanner() {
     }, 500);
 
     return () => window.clearTimeout(timer);
-  }, [cleanSubjects, currentUser, disabledCriteria, isLoading, priorityOrder]);
+  }, [cleanSubjects, currentUser, disabledCriteria, isGuestMode, isLoading, priorityOrder]);
 
 
   async function submitAuth(event: FormEvent<HTMLFormElement>) {
@@ -385,6 +387,7 @@ export default function AdmissionPlanner() {
 
       setAuthLogin("");
       setAuthPassword("");
+      setIsGuestMode(false);
       setCurrentUser(data.user);
       setIsLoading(true);
     } catch (authSubmitError) {
@@ -394,9 +397,27 @@ export default function AdmissionPlanner() {
     }
   }
 
+  function startGuestSession() {
+    setAuthError(null);
+    setAuthLogin("");
+    setAuthPassword("");
+    setIsGuestMode(true);
+    setCurrentUser({ id: 0, login: "Гость" });
+    setExamSubjects(readExamProfile());
+    setPriorityOrder(readPriorityOrder());
+    setDisabledCriteria(readDisabledCriteria());
+    setUniversities(readLocalUniversities());
+    setIsLocalMode(true);
+    setIsLoading(false);
+  }
+
   async function logout() {
-    await fetch("/api/auth/logout", { method: "POST" }).catch(() => null);
+    if (!isGuestMode) {
+      await fetch("/api/auth/logout", { method: "POST" }).catch(() => null);
+    }
+
     setCurrentUser(null);
+    setIsGuestMode(false);
     setUniversities([]);
     setIsLocalMode(false);
     setIsLoading(false);
@@ -503,6 +524,15 @@ export default function AdmissionPlanner() {
 
     const previousUniversity = editingUniversityId === null ? undefined : universities.find((university) => university.id === editingUniversityId);
 
+    if (isGuestMode) {
+      const localUniversity = localUniversityFromDraft(cleaned, previousUniversity);
+      setUniversities((current) => (editingUniversityId === null ? [localUniversity, ...current] : current.map((university) => (university.id === editingUniversityId ? localUniversity : university))));
+      setIsLocalMode(true);
+      resetForm();
+      setIsSaving(false);
+      return;
+    }
+
     try {
       const response = await fetch(editingUniversityId === null ? "/api/universities" : `/api/universities?id=${editingUniversityId}`, {
         method: editingUniversityId === null ? "POST" : "PUT",
@@ -536,6 +566,14 @@ export default function AdmissionPlanner() {
     }
 
     setError(null);
+
+    if (isGuestMode) {
+      setUniversities((current) => current.filter((university) => university.id !== id));
+      if (editingUniversityId === id) {
+        resetForm();
+      }
+      return;
+    }
 
     try {
       const response = await fetch(`/api/universities?id=${id}`, { method: "DELETE" });
@@ -589,7 +627,11 @@ export default function AdmissionPlanner() {
             </button>
           </form>
 
-          <button type="button" onClick={() => { setAuthMode(authMode === "login" ? "register" : "login"); setAuthError(null); }} className="mt-4 w-full rounded-lg border border-white/15 px-4 py-3 text-sm font-bold text-white transition hover:bg-white/10">
+          <button type="button" onClick={startGuestSession} className="mt-4 w-full rounded-lg border border-blue-200 bg-blue-50 px-4 py-3 text-sm font-bold text-blue-700 transition hover:border-blue-300 hover:bg-blue-100">
+            Войти как гость
+          </button>
+
+          <button type="button" onClick={() => { setAuthMode(authMode === "login" ? "register" : "login"); setAuthError(null); }} className="mt-3 w-full rounded-lg border border-white/15 px-4 py-3 text-sm font-bold text-white transition hover:bg-white/10">
             {authMode === "login" ? "Создать новый профиль" : "Уже есть профиль"}
           </button>
         </section>
@@ -599,30 +641,30 @@ export default function AdmissionPlanner() {
 
 
   return (
-    <main className="min-h-screen bg-slate-100 text-slate-950">
-      <section className="bg-slate-950 px-4 py-8 text-white md:py-10">
-        <div className="mx-auto grid max-w-7xl gap-6 lg:grid-cols-[1.1fr_0.9fr] lg:items-start">
+    <main className="min-h-screen bg-slate-50 text-slate-950">
+      <section className="relative overflow-hidden bg-slate-950 px-4 py-8 text-white md:py-12">
+        <div className="mx-auto grid max-w-7xl gap-6 lg:grid-cols-[minmax(0,1fr)_25rem] lg:items-center">
           <div>
             <p className="text-sm font-bold uppercase tracking-[0.18em] text-blue-300">University Helper</p>
-            <h1 className="mt-4 max-w-4xl text-4xl font-black leading-tight tracking-tight md:text-6xl">Сравнение профилей обучения по данным приема</h1>
+            <h1 className="mt-4 max-w-4xl text-4xl font-black leading-tight tracking-tight md:text-5xl">Сравнение профилей обучения по данным приема</h1>
             <p className="mt-5 max-w-2xl text-base leading-7 text-slate-300">
               Выберите вуз, заполните профиль обучения и направление подготовки. Для каждого профиля можно внести бюджетные и платные данные отдельно: места, проходной, средний и максимальный балл.
             </p>
-            <p className="mt-5 text-sm font-semibold text-slate-300">Профиль: {currentUser.login}</p>
-            <div className="mt-4 flex flex-col gap-3 sm:flex-row">
-              <button type="button" onClick={() => (isFormOpen ? resetForm() : setIsFormOpen(true))} className="rounded-lg bg-white px-5 py-3 text-center text-base font-bold text-slate-950 transition hover:bg-blue-50">
+            <p className="mt-5 text-sm font-semibold text-slate-300">Профиль: {currentUser.login}{isGuestMode ? " · локальное хранение" : ""}</p>
+            <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:flex-wrap">
+              <button type="button" onClick={() => (isFormOpen ? resetForm() : setIsFormOpen(true))} className="min-h-12 rounded-lg bg-white px-5 py-3 text-center text-base font-bold text-slate-950 shadow-sm transition hover:-translate-y-0.5 hover:bg-blue-50">
                 {isFormOpen ? "Скрыть форму" : "Добавить вуз"}
               </button>
-              <button type="button" onClick={() => setIsPriorityOpen(true)} className="rounded-lg border border-blue-200 bg-blue-50 px-5 py-3 text-center text-base font-bold text-blue-700 transition hover:border-blue-300 hover:bg-blue-100">
+              <button type="button" onClick={() => setIsPriorityOpen(true)} className="min-h-12 rounded-lg border border-blue-200 bg-blue-50 px-5 py-3 text-center text-base font-bold text-blue-700 shadow-sm transition hover:-translate-y-0.5 hover:border-blue-300 hover:bg-blue-100">
                 Настроить приоритеты
               </button>
-              <button type="button" onClick={logout} className="rounded-lg border border-white/20 px-5 py-3 text-center text-base font-bold text-white transition hover:bg-white/10">
+              <button type="button" onClick={logout} className="min-h-12 rounded-lg border border-white/20 px-5 py-3 text-center text-base font-bold text-white transition hover:bg-white/10">
                 Выйти
               </button>
             </div>
           </div>
 
-          <div className="rounded-lg border border-white/10 bg-white/10 p-5 shadow-2xl backdrop-blur">
+          <div className="rounded-lg border border-white/10 bg-white/10 p-5 shadow-2xl shadow-slate-950/25 backdrop-blur md:p-6">
             <div className="flex items-start justify-between gap-4">
               <div>
                 <p className="text-sm font-bold uppercase tracking-[0.16em] text-blue-200">Ваш профиль</p>
@@ -638,19 +680,19 @@ export default function AdmissionPlanner() {
         </div>
       </section>
 
-      <div className="mx-auto max-w-7xl px-4 py-8">
+      <div className="mx-auto max-w-7xl px-4 py-8 md:py-10">
         {error && <div className="mb-5 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-semibold text-amber-900">{error}</div>}
         {isLocalMode && !error && <div className="mb-5 rounded-lg border border-blue-200 bg-blue-50 px-4 py-3 text-sm font-semibold text-blue-950">Локальный режим: данные сохраняются в этом браузере.</div>}
 
-        <section className="grid gap-5 lg:grid-cols-[0.95fr_1.05fr]">
-          <div className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm md:p-6">
+        <section className="grid gap-5 xl:grid-cols-[0.9fr_1.1fr]">
+          <div className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm shadow-slate-200/60 md:p-6">
             <div className="flex items-start justify-between gap-4">
               <div>
                 <p className="text-sm font-bold uppercase tracking-[0.16em] text-blue-700">Текущие приоритеты</p>
                 <h2 className="mt-2 text-2xl font-black text-slate-950">Что важнее при сравнении</h2>
                 <p className="mt-2 text-sm leading-6 text-slate-500">Перемещайте параметры. Дорогу и общежитие можно полностью отключить.</p>
               </div>
-              <button type="button" onClick={() => setIsPriorityOpen(true)} className="rounded-lg border border-slate-200 px-3 py-2 text-sm font-bold text-slate-600 transition hover:bg-slate-50">
+              <button type="button" onClick={() => setIsPriorityOpen(true)} className="min-h-10 rounded-lg border border-slate-200 px-3 py-2 text-sm font-bold text-slate-600 transition hover:bg-slate-50">
                 Открыть
               </button>
             </div>
@@ -661,7 +703,7 @@ export default function AdmissionPlanner() {
                 const optional = optionalCriteriaKeys.includes(key);
 
                 return (
-                  <div key={key} className={`grid grid-cols-[2rem_1fr_auto] gap-3 rounded-lg p-3 ${disabled ? "bg-slate-100 opacity-75" : "bg-slate-50"}`}>
+                  <div key={key} className={`grid grid-cols-[2rem_minmax(0,1fr)] gap-3 rounded-lg p-3 sm:grid-cols-[2rem_minmax(0,1fr)_auto] ${disabled ? "bg-slate-100 opacity-75" : "bg-slate-50"}`}>
                     <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-white text-sm font-black text-slate-950 shadow-sm">{index + 1}</div>
                     <div className="min-w-0">
                       <div className="flex flex-wrap items-center gap-2">
@@ -675,11 +717,11 @@ export default function AdmissionPlanner() {
                         </button>
                       )}
                     </div>
-                    <div className="flex gap-2">
-                      <button type="button" disabled={index === 0} onClick={() => shiftPriority(key, "up")} className="h-8 w-8 rounded-lg border border-slate-200 bg-white font-black text-slate-600 hover:border-blue-300 hover:text-blue-700 disabled:cursor-not-allowed disabled:opacity-35" aria-label={`Поднять ${criteriaLabels[key]}`}>
+                    <div className="col-span-2 flex gap-2 sm:col-span-1">
+                      <button type="button" disabled={index === 0} onClick={() => shiftPriority(key, "up")} className="h-9 w-9 rounded-lg border border-slate-200 bg-white font-black text-slate-600 transition hover:border-blue-300 hover:text-blue-700 disabled:cursor-not-allowed disabled:opacity-35" aria-label={`Поднять ${criteriaLabels[key]}`}>
                         ↑
                       </button>
-                      <button type="button" disabled={index === priorityOrder.length - 1} onClick={() => shiftPriority(key, "down")} className="h-8 w-8 rounded-lg border border-slate-200 bg-white font-black text-slate-600 hover:border-blue-300 hover:text-blue-700 disabled:cursor-not-allowed disabled:opacity-35" aria-label={`Опустить ${criteriaLabels[key]}`}>
+                      <button type="button" disabled={index === priorityOrder.length - 1} onClick={() => shiftPriority(key, "down")} className="h-9 w-9 rounded-lg border border-slate-200 bg-white font-black text-slate-600 transition hover:border-blue-300 hover:text-blue-700 disabled:cursor-not-allowed disabled:opacity-35" aria-label={`Опустить ${criteriaLabels[key]}`}>
                         ↓
                       </button>
                     </div>
@@ -689,7 +731,7 @@ export default function AdmissionPlanner() {
             </div>
           </div>
 
-          <div className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm md:p-6">
+          <div className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm shadow-slate-200/60 md:p-6">
             <p className="text-sm font-bold uppercase tracking-[0.16em] text-blue-700">Как считается</p>
             <h2 className="mt-2 text-2xl font-black text-slate-950">Без оценки шансов</h2>
             <div className="mt-5 grid gap-3 sm:grid-cols-3">
@@ -722,7 +764,7 @@ export default function AdmissionPlanner() {
         </section>
 
         {topSpecialty && (
-          <section className="mt-6 rounded-lg border border-emerald-200 bg-emerald-50 p-5 shadow-sm md:p-6">
+          <section className="mt-6 rounded-lg border border-emerald-200 bg-emerald-50 p-5 shadow-sm shadow-emerald-100/70 md:p-6">
             <p className="text-sm font-bold uppercase tracking-[0.16em] text-emerald-700">Лучшее совпадение сейчас</p>
             <div className="mt-2 flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
               <div>
@@ -739,7 +781,7 @@ export default function AdmissionPlanner() {
         )}
 
         {isFormOpen && (
-          <section className="mt-6 rounded-lg border border-slate-200 bg-white p-5 shadow-sm md:p-6">
+          <section className="mt-6 rounded-lg border border-slate-200 bg-white p-5 shadow-sm shadow-slate-200/60 md:p-6">
             <div className="flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
               <div>
                 <p className="text-sm font-bold uppercase tracking-[0.16em] text-blue-700">Данные для сравнения</p>
@@ -778,7 +820,7 @@ export default function AdmissionPlanner() {
               </div>
 
               <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                <button type="button" onClick={addSpecialty} disabled={draft.specialties.length >= 8} className="rounded-lg border border-blue-200 px-4 py-3 font-bold text-blue-700 transition hover:bg-blue-50 disabled:cursor-not-allowed disabled:opacity-50">
+                <button type="button" onClick={addSpecialty} disabled={draft.specialties.length >= 8} className="min-h-12 rounded-lg border border-blue-200 px-4 py-3 font-bold text-blue-700 transition hover:bg-blue-50 disabled:cursor-not-allowed disabled:opacity-50">
                   Добавить профиль обучения
                 </button>
                 <div className="flex flex-col gap-2 sm:flex-row">
@@ -787,7 +829,7 @@ export default function AdmissionPlanner() {
                       Отмена
                     </button>
                   )}
-                  <button type="submit" disabled={isSaving} className="rounded-lg bg-slate-950 px-5 py-3 font-bold text-white shadow-sm transition hover:bg-blue-700 disabled:cursor-wait disabled:opacity-60">
+                  <button type="submit" disabled={isSaving} className="min-h-12 rounded-lg bg-slate-950 px-5 py-3 font-bold text-white shadow-sm transition hover:bg-blue-700 disabled:cursor-wait disabled:opacity-60">
                     {isSaving ? "Сохраняю..." : isEditing ? "Сохранить изменения" : "Сохранить и пересчитать"}
                   </button>
                 </div>

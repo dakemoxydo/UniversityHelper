@@ -1,4 +1,4 @@
-﻿import { admissionBasisLabels, criteriaLabels, type RatedSpecialty, type Specialty } from "@/lib/university-calculator";
+import { admissionBasisLabels, criteriaLabels, type RatedSpecialty, type Specialty } from "@/lib/university-calculator";
 
 function formatCurrency(value: number) {
   return new Intl.NumberFormat("ru-RU", {
@@ -93,7 +93,7 @@ export function SpecialtyCard({
   ].filter(Boolean);
 
   return (
-    <article className="overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
+    <article className="overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm shadow-slate-200/70 transition hover:-translate-y-0.5 hover:shadow-md">
       <div className={`h-1.5 ${scoreTone(item.score)}`} />
       <div className="p-5 md:p-6">
         <div className="grid gap-5 lg:grid-cols-[1fr_auto] lg:items-start">
@@ -106,10 +106,16 @@ export function SpecialtyCard({
             </div>
             <h3 className="mt-3 text-2xl font-black tracking-tight text-slate-950">{item.specialty.name}</h3>
             {item.specialty.direction && <p className="mt-1 text-sm font-semibold text-blue-700">{item.specialty.direction}</p>}
-            <p className="mt-3 text-sm leading-6 text-slate-600">{facts.join(" · ")}</p>
+            <div className="mt-3 flex flex-wrap gap-2">
+              {facts.map((fact) => (
+                <span key={fact} className="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-600">
+                  {fact}
+                </span>
+              ))}
+            </div>
           </div>
 
-          <div className="grid grid-cols-[7rem_1fr] gap-3 sm:min-w-80">
+          <div className="grid gap-3 sm:grid-cols-[7rem_1fr] sm:min-w-80">
             <div className="rounded-lg bg-slate-950 p-4 text-white">
               <p className="text-xs font-bold uppercase tracking-[0.14em] text-slate-400">Итог</p>
               <p className="mt-1 text-4xl font-black">{item.score}</p>
@@ -136,7 +142,7 @@ export function SpecialtyCard({
         <details className="mt-5 rounded-lg border border-slate-200 bg-white open:bg-slate-50">
           <summary className="cursor-pointer px-4 py-3 text-sm font-bold text-slate-700 outline-none transition hover:text-blue-700 focus-visible:ring-4 focus-visible:ring-blue-100">Разбивка оценки и что проверить</summary>
           <div className="border-t border-slate-200 p-4">
-            <div className="grid gap-3 md:grid-cols-4">
+            <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
               {visibleCriteria.map((key) => (
                 <div key={key} className="rounded-lg bg-white p-3 ring-1 ring-slate-200">
                   <div className="mb-2 flex items-center justify-between gap-2 text-sm">
@@ -173,10 +179,10 @@ export function SpecialtyCard({
         </details>
 
         <div className="mt-5 flex flex-col gap-2 border-t border-slate-100 pt-5 sm:flex-row sm:justify-end">
-          <button type="button" onClick={() => onEditUniversity(item.university.id)} className="rounded-lg border border-blue-200 px-4 py-2 text-sm font-semibold text-blue-700 transition hover:bg-blue-50">
+          <button type="button" onClick={() => onEditUniversity(item.university.id)} className="min-h-10 rounded-lg border border-blue-200 px-4 py-2 text-sm font-semibold text-blue-700 transition hover:bg-blue-50">
             Редактировать вуз
           </button>
-          <button type="button" onClick={() => onDeleteUniversity(item.university.id)} className="rounded-lg border border-rose-200 px-4 py-2 text-sm font-semibold text-rose-600 transition hover:bg-rose-50">
+          <button type="button" onClick={() => onDeleteUniversity(item.university.id)} className="min-h-10 rounded-lg border border-rose-200 px-4 py-2 text-sm font-semibold text-rose-600 transition hover:bg-rose-50">
             Удалить вуз
           </button>
         </div>

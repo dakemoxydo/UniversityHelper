@@ -2,6 +2,8 @@
 
 :root {
   color-scheme: light;
+  --app-bg: #f8fafc;
+  --app-ink: #0f172a;
 }
 
 * {
@@ -14,10 +16,35 @@ html {
 
 body {
   margin: 0;
+  background: var(--app-bg);
+  color: var(--app-ink);
+  text-rendering: optimizeLegibility;
 }
 
 button,
 input,
 select {
   font: inherit;
+}
+
+button,
+a,
+input,
+select,
+summary {
+  -webkit-tap-highlight-color: transparent;
+}
+
+button:focus-visible,
+a:focus-visible,
+input:focus-visible,
+select:focus-visible,
+summary:focus-visible {
+  outline: 3px solid rgb(96 165 250 / 0.55);
+  outline-offset: 2px;
+}
+
+::selection {
+  background: #bfdbfe;
+  color: #0f172a;
 }

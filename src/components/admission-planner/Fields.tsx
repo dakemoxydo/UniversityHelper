@@ -1,8 +1,8 @@
-﻿import type { AdmissionBasis, SpecialtyInput } from "@/lib/university-calculator";
+import type { AdmissionBasis, SpecialtyInput } from "@/lib/university-calculator";
 import { admissionBasisLabels } from "@/lib/university-calculator";
 import { directionOptions, examSubjectOptions, maxExamSubjects, type ExamSubjectScore } from "./config";
 
-const inputClass = "mt-2 w-full rounded-lg border border-slate-200 bg-white px-3 py-3 outline-none transition focus:border-blue-500 focus:ring-4 focus:ring-blue-100";
+const inputClass = "mt-2 min-h-12 w-full rounded-lg border border-slate-200 bg-white px-3 py-3 outline-none transition focus:border-blue-500 focus:ring-4 focus:ring-blue-100";
 
 export function NumberField({
   label,
@@ -42,7 +42,7 @@ function CompactNumberInput({
   step?: number;
   onChange: (value: number) => void;
 }) {
-  return <input aria-label={label} type="number" min={min} max={max} step={step} value={value} onChange={(event) => onChange(Number(event.target.value))} className="h-10 w-full rounded-md border border-slate-200 bg-white px-2 text-sm font-semibold text-slate-950 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100" />;
+  return <input aria-label={label} type="number" min={min} max={max} step={step} value={value} onChange={(event) => onChange(Number(event.target.value))} className="h-11 w-full rounded-md border border-slate-200 bg-white px-2 text-sm font-semibold text-slate-950 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100" />;
 }
 
 export function ExamProfileEditor({
@@ -74,7 +74,7 @@ export function ExamProfileEditor({
 
       <div className="space-y-2">
         {subjects.map((subject) => (
-          <div key={subject.id} className="grid grid-cols-[1fr_5.5rem_auto] gap-2 rounded-lg bg-white/10 p-2">
+          <div key={subject.id} className="grid grid-cols-[minmax(0,1fr)_5.5rem_auto] gap-2 rounded-lg bg-white/10 p-2">
             <select value={subject.subject} onChange={(event) => onChange(subject.id, { subject: event.target.value })} className="min-w-0 rounded-md border border-white/10 bg-slate-900 px-2 py-2 text-sm text-white outline-none focus:border-blue-300 focus:ring-2 focus:ring-blue-400/20">
               {examSubjectOptions.map((option) => (
                 <option key={option} value={option}>
@@ -83,7 +83,7 @@ export function ExamProfileEditor({
               ))}
             </select>
             <input type="number" min={0} max={100} value={subject.score} onChange={(event) => onChange(subject.id, { score: Number(event.target.value) })} className="rounded-md border border-white/10 bg-slate-900 px-2 py-2 text-sm font-bold text-white outline-none focus:border-blue-300 focus:ring-2 focus:ring-blue-400/20" />
-            <button type="button" disabled={subjects.length <= 3} onClick={() => onRemove(subject.id)} className="rounded-md border border-white/10 px-3 py-2 text-sm font-bold text-slate-300 transition hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-35" aria-label="Удалить предмет">
+            <button type="button" disabled={subjects.length <= 3} onClick={() => onRemove(subject.id)} className="min-h-10 rounded-md border border-white/10 px-3 py-2 text-sm font-bold text-slate-300 transition hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-35" aria-label="Удалить предмет">
               x
             </button>
           </div>
@@ -91,7 +91,7 @@ export function ExamProfileEditor({
       </div>
 
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <button type="button" onClick={onAdd} disabled={subjects.length >= maxExamSubjects} className="rounded-lg border border-white/15 px-4 py-2 text-sm font-bold text-white transition hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-45">
+        <button type="button" onClick={onAdd} disabled={subjects.length >= maxExamSubjects} className="min-h-10 rounded-lg border border-white/15 px-4 py-2 text-sm font-bold text-white transition hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-45">
           Добавить предмет
         </button>
         <div className="rounded-lg bg-white p-3 text-slate-950">
@@ -174,14 +174,14 @@ export function SpecialtyFields({
   const directionListId = `direction-options-${index}`;
 
   return (
-    <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
+    <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm shadow-slate-200/60">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h3 className="text-sm font-bold uppercase tracking-[0.14em] text-slate-500">Профиль обучения {index + 1}</h3>
           <p className="mt-1 text-sm text-slate-500">Название профиля, направление и данные приема.</p>
         </div>
         {canRemove && (
-          <button type="button" onClick={onRemove} className="self-start rounded-lg border border-rose-200 px-3 py-2 text-sm font-semibold text-rose-600 transition hover:bg-rose-50 sm:self-auto">
+          <button type="button" onClick={onRemove} className="min-h-10 self-start rounded-lg border border-rose-200 px-3 py-2 text-sm font-semibold text-rose-600 transition hover:bg-rose-50 sm:self-auto">
             Удалить
           </button>
         )}
