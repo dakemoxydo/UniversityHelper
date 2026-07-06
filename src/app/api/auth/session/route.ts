@@ -11,6 +11,6 @@ export async function GET() {
     const user = await getCurrentUser();
     return NextResponse.json({ user });
   } catch (error) {
-    return databaseErrorResponse(error, "Не удалось проверить сессию.");
+    return databaseErrorResponse(error, "\u041d\u0435 \u0443\u0434\u0430\u043b\u043e\u0441\u044c \u043f\u0440\u043e\u0432\u0435\u0440\u0438\u0442\u044c \u0441\u0435\u0441\u0441\u0438\u044e.", "auth.session");
   }
 }

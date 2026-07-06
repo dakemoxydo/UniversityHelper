@@ -1,4 +1,5 @@
 import { requireDb } from "@/db";
+import { ensureDatabaseSchema } from "@/db/ensure-schema";
 import { profiles, users } from "@/db/schema";
 import { databaseErrorResponse, isUniqueViolation, logApiError } from "@/lib/api-responses";
 import { createSession, hashPassword, normalizeLogin, validatePassword } from "@/lib/auth";
@@ -12,9 +13,10 @@ export async function POST(request: Request) {
 
   try {
     database = requireDb();
+    await ensureDatabaseSchema();
   } catch (error) {
-    logApiError("auth.register.requireDb", error);
-    return NextResponse.json({ error: "DATABASE_URL \u043d\u0435 \u043d\u0430\u0441\u0442\u0440\u043e\u0435\u043d, \u0440\u0435\u0433\u0438\u0441\u0442\u0440\u0430\u0446\u0438\u044f \u043d\u0435\u0434\u043e\u0441\u0442\u0443\u043f\u043d\u0430." }, { status: 503 });
+    logApiError("auth.register.init", error);
+    return NextResponse.json({ error: "DATABASE_URL \u043d\u0435 \u043d\u0430\u0441\u0442\u0440\u043e\u0435\u043d \u0438\u043b\u0438 \u0431\u0430\u0437\u0430 \u0432\u0440\u0435\u043c\u0435\u043d\u043d\u043e \u043d\u0435\u0434\u043e\u0441\u0442\u0443\u043f\u043d\u0430." }, { status: 503 });
   }
 
   const body = (await request.json().catch(() => null)) as { login?: unknown; password?: unknown } | null;

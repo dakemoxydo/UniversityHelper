@@ -15,9 +15,9 @@ type ExamSubjectScore = {
 };
 
 const defaultExamSubjects: ExamSubjectScore[] = [
-  { id: "exam-russian", subject: "Русский язык", score: 80 },
-  { id: "exam-math", subject: "Профильная математика", score: 80 },
-  { id: "exam-third", subject: "Информатика", score: 80 },
+  { id: "exam-russian", subject: "\u0420\u0443\u0441\u0441\u043a\u0438\u0439 \u044f\u0437\u044b\u043a", score: 80 },
+  { id: "exam-math", subject: "\u041f\u0440\u043e\u0444\u0438\u043b\u044c\u043d\u0430\u044f \u043c\u0430\u0442\u0435\u043c\u0430\u0442\u0438\u043a\u0430", score: 80 },
+  { id: "exam-third", subject: "\u0418\u043d\u0444\u043e\u0440\u043c\u0430\u0442\u0438\u043a\u0430", score: 80 },
 ];
 
 function cleanExamSubjects(value: unknown): ExamSubjectScore[] {
@@ -61,7 +61,7 @@ function profileResult(profile: typeof profiles.$inferSelect | undefined) {
 }
 
 function unauthorizedResponse() {
-  return NextResponse.json({ error: "Нужно войти в аккаунт." }, { status: 401 });
+  return NextResponse.json({ error: "\u041d\u0443\u0436\u043d\u043e \u0432\u043e\u0439\u0442\u0438 \u0432 \u0430\u043a\u043a\u0430\u0443\u043d\u0442." }, { status: 401 });
 }
 
 export async function GET() {
@@ -70,7 +70,7 @@ export async function GET() {
   try {
     database = requireDb();
   } catch {
-    return NextResponse.json({ error: "DATABASE_URL не настроен." }, { status: 503 });
+    return NextResponse.json({ error: "DATABASE_URL \u043d\u0435 \u043d\u0430\u0441\u0442\u0440\u043e\u0435\u043d." }, { status: 503 });
   }
 
   try {
@@ -83,7 +83,7 @@ export async function GET() {
     const [profile] = await database.select().from(profiles).where(eq(profiles.userId, user.id)).limit(1);
     return NextResponse.json({ profile: profileResult(profile) });
   } catch (error) {
-    return databaseErrorResponse(error, "Не удалось загрузить профиль.");
+    return databaseErrorResponse(error, "\u041d\u0435 \u0443\u0434\u0430\u043b\u043e\u0441\u044c \u0437\u0430\u0433\u0440\u0443\u0437\u0438\u0442\u044c \u043f\u0440\u043e\u0444\u0438\u043b\u044c.", "profile.get");
   }
 }
 
@@ -93,7 +93,7 @@ export async function PUT(request: Request) {
   try {
     database = requireDb();
   } catch {
-    return NextResponse.json({ error: "DATABASE_URL не настроен." }, { status: 503 });
+    return NextResponse.json({ error: "DATABASE_URL \u043d\u0435 \u043d\u0430\u0441\u0442\u0440\u043e\u0435\u043d." }, { status: 503 });
   }
 
   try {
@@ -137,6 +137,6 @@ export async function PUT(request: Request) {
 
     return NextResponse.json({ profile });
   } catch (error) {
-    return databaseErrorResponse(error, "Не удалось сохранить профиль.");
+    return databaseErrorResponse(error, "\u041d\u0435 \u0443\u0434\u0430\u043b\u043e\u0441\u044c \u0441\u043e\u0445\u0440\u0430\u043d\u0438\u0442\u044c \u043f\u0440\u043e\u0444\u0438\u043b\u044c.", "profile.put");
   }
 }

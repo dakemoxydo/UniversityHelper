@@ -1,4 +1,5 @@
 import { requireDb } from "@/db";
+import { ensureDatabaseSchema } from "@/db/ensure-schema";
 import { sessions, users } from "@/db/schema";
 import { and, eq, gt } from "drizzle-orm";
 import { cookies } from "next/headers";
@@ -46,6 +47,7 @@ function hashToken(token: string) {
 }
 
 export async function createSession(userId: number) {
+  await ensureDatabaseSchema();
   const database = requireDb();
   const token = randomBytes(32).toString("hex");
   const expiresAt = new Date(Date.now() + sessionDurationMs);
@@ -76,6 +78,7 @@ export async function getCurrentUser(): Promise<AuthUser | null> {
     return null;
   }
 
+  await ensureDatabaseSchema();
   const database = requireDb();
   const [row] = await database
     .select({ id: users.id, login: users.login })
@@ -90,6 +93,8 @@ export async function getCurrentUser(): Promise<AuthUser | null> {
 export async function destroyCurrentSession() {
   const cookieStore = await cookies();
   const token = cookieStore.get(sessionCookieName)?.value;
+
+  await ensureDatabaseSchema();
   const database = requireDb();
 
   if (token) {

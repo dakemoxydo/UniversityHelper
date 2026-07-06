@@ -9,8 +9,12 @@ function normalizeDatabaseUrl(url: string) {
     const parsed = new URL(url);
     parsed.searchParams.delete("channel_binding");
 
-    if (parsed.hostname.includes("neon.tech") && !parsed.searchParams.has("sslmode")) {
-      parsed.searchParams.set("sslmode", "require");
+    if (parsed.hostname.includes("neon.tech")) {
+      const sslMode = parsed.searchParams.get("sslmode");
+
+      if (!sslMode || sslMode === "prefer" || sslMode === "require" || sslMode === "verify-ca") {
+        parsed.searchParams.set("sslmode", "verify-full");
+      }
     }
 
     return parsed.toString();

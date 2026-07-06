@@ -1,16 +1,61 @@
 import { NextResponse } from "next/server";
 
-function errorCode(error: unknown) {
-  return typeof error === "object" && error !== null && "code" in error ? String((error as { code?: unknown }).code) : "";
+type ErrorLike = {
+  cause?: unknown;
+  code?: unknown;
+  detail?: unknown;
+  message?: unknown;
+};
+
+function errorLike(error: unknown): ErrorLike | null {
+  return typeof error === "object" && error !== null ? (error as ErrorLike) : null;
 }
 
-function errorMessage(error: unknown) {
-  return error instanceof Error ? error.message : String(error);
+function nestedCause(error: unknown) {
+  return errorLike(error)?.cause;
+}
+
+function errorCode(error: unknown): string {
+  const directCode = errorLike(error)?.code;
+
+  if (directCode) {
+    return String(directCode);
+  }
+
+  const cause = nestedCause(error);
+  return cause ? errorCode(cause) : "";
+}
+
+function errorMessage(error: unknown): string {
+  if (error instanceof Error) {
+    return error.message;
+  }
+
+  const message = errorLike(error)?.message;
+  return message ? String(message) : String(error);
+}
+
+function errorDetail(error: unknown): string {
+  const detail = errorLike(error)?.detail;
+
+  if (detail) {
+    return String(detail);
+  }
+
+  const cause = nestedCause(error);
+  return cause ? errorDetail(cause) : "";
 }
 
 export function logApiError(scope: string, error: unknown) {
-  const code = errorCode(error);
-  console.error(`[${scope}]`, code ? `code=${code}` : "", errorMessage(error));
+  const cause = nestedCause(error);
+  const payload = {
+    code: errorCode(error),
+    message: errorMessage(error),
+    detail: errorDetail(error),
+    cause: cause ? errorMessage(cause) : "",
+  };
+
+  console.error(`[${scope}]`, payload);
 }
 
 export function isUniqueViolation(error: unknown) {
@@ -22,7 +67,7 @@ export function databaseErrorResponse(error: unknown, fallback = "\u041d\u0435 \
   logApiError(scope, error);
 
   if (code === "42P01" || code === "42703" || code === "23503") {
-    return NextResponse.json({ error: "\u0411\u0430\u0437\u0430 \u0434\u0430\u043d\u043d\u044b\u0445 \u043d\u0435 \u0433\u043e\u0442\u043e\u0432\u0430. \u041f\u0440\u0438\u043c\u0435\u043d\u0438\u0442\u0435 \u043c\u0438\u0433\u0440\u0430\u0446\u0438\u0438 Drizzle \u043a PostgreSQL." }, { status: 503 });
+    return NextResponse.json({ error: "\u0411\u0430\u0437\u0430 \u0434\u0430\u043d\u043d\u044b\u0445 \u043d\u0435 \u0433\u043e\u0442\u043e\u0432\u0430. \u041e\u0431\u043d\u043e\u0432\u0438\u0442\u0435 \u0441\u0442\u0440\u0430\u043d\u0438\u0446\u0443 \u0438 \u043f\u043e\u0432\u0442\u043e\u0440\u0438\u0442\u0435 \u0434\u0435\u0439\u0441\u0442\u0432\u0438\u0435." }, { status: 503 });
   }
 
   if (code === "ECONNRESET" || code === "ETIMEDOUT" || code === "ENOTFOUND" || code === "ECONNREFUSED") {
