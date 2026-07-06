@@ -42,6 +42,8 @@ type ProfilePayload = {
   disabledCriteria?: CriteriaKey[];
 };
 
+type DashboardSection = "about" | "universities" | "profile" | "settings";
+
 const emptySpecialty = (): SpecialtyInput => ({
   name: "",
   direction: "",
@@ -56,6 +58,13 @@ const emptySpecialty = (): SpecialtyInput => ({
   paidAverageScore: 0,
   paidMaxScore: 0,
 });
+
+const dashboardSections: Array<{ id: DashboardSection; label: string; description: string }> = [
+  { id: "about", label: "О сайте", description: "Как работает сравнение" },
+  { id: "universities", label: "Вузы", description: "Данные и рейтинг" },
+  { id: "profile", label: "Профиль", description: "Баллы ЕГЭ" },
+  { id: "settings", label: "Настройки", description: "Приоритеты и вход" },
+];
 
 const createEmptyDraft = (): UniversityInput => ({
   name: "",
@@ -210,6 +219,7 @@ export default function AdmissionPlanner() {
   const [examSubjects, setExamSubjects] = useState<ExamSubjectScore[]>(defaultExamSubjects);
   const [priorityOrder, setPriorityOrder] = useState<PriorityOrder>(defaultPriorityOrder);
   const [disabledCriteria, setDisabledCriteria] = useState<DisabledCriteria>([]);
+  const [activeSection, setActiveSection] = useState<DashboardSection>("about");
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [isPriorityOpen, setIsPriorityOpen] = useState(false);
   const [editingUniversityId, setEditingUniversityId] = useState<number | null>(null);
@@ -499,6 +509,7 @@ export default function AdmissionPlanner() {
     setEditingUniversityId(id);
     setDraft(draftFromUniversity(university));
     setIsFormOpen(true);
+    setActiveSection("universities");
     setError(null);
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
@@ -640,230 +651,355 @@ export default function AdmissionPlanner() {
   }
 
 
+
   return (
     <main className="min-h-screen bg-slate-50 text-slate-950">
-      <section className="relative overflow-hidden bg-slate-950 px-4 py-8 text-white md:py-12">
-        <div className="mx-auto grid max-w-7xl gap-6 lg:grid-cols-[minmax(0,1fr)_25rem] lg:items-center">
-          <div>
-            <p className="text-sm font-bold uppercase tracking-[0.18em] text-blue-300">University Helper</p>
-            <h1 className="mt-4 max-w-4xl text-4xl font-black leading-tight tracking-tight md:text-5xl">Сравнение профилей обучения по данным приема</h1>
-            <p className="mt-5 max-w-2xl text-base leading-7 text-slate-300">
-              Выберите вуз, заполните профиль обучения и направление подготовки. Для каждого профиля можно внести бюджетные и платные данные отдельно: места, проходной, средний и максимальный балл.
-            </p>
-            <p className="mt-5 text-sm font-semibold text-slate-300">Профиль: {currentUser.login}{isGuestMode ? " · локальное хранение" : ""}</p>
-            <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:flex-wrap">
-              <button type="button" onClick={() => (isFormOpen ? resetForm() : setIsFormOpen(true))} className="min-h-12 rounded-lg bg-white px-5 py-3 text-center text-base font-bold text-slate-950 shadow-sm transition hover:-translate-y-0.5 hover:bg-blue-50">
+      <div className="mx-auto grid min-h-screen max-w-[96rem] lg:grid-cols-[18rem_minmax(0,1fr)]">
+        <aside className="border-b border-slate-200 bg-slate-950 px-4 py-5 text-white lg:sticky lg:top-0 lg:h-screen lg:border-b-0 lg:border-r lg:border-slate-800 lg:px-5">
+          <div className="flex items-start justify-between gap-4 lg:block">
+            <div>
+              <p className="text-xs font-bold uppercase tracking-[0.18em] text-blue-300">University Helper</p>
+              <h1 className="mt-3 text-2xl font-black leading-tight tracking-tight">Панель выбора вуза</h1>
+              <p className="mt-3 text-sm leading-6 text-slate-300">
+                Разделил данные, рейтинг, профиль и настройки, чтобы экран работал как dashboard, а не как длинная анкета.
+              </p>
+            </div>
+            <button type="button" onClick={logout} className="min-h-10 rounded-lg border border-white/15 px-3 py-2 text-sm font-bold text-white transition hover:bg-white/10 lg:mt-6 lg:w-full">
+              Выйти
+            </button>
+          </div>
+
+          <nav className="mt-5 grid grid-cols-2 gap-2 sm:grid-cols-4 lg:grid-cols-1" aria-label="Разделы панели">
+            {dashboardSections.map((section) => {
+              const active = activeSection === section.id;
+
+              return (
+                <button
+                  key={section.id}
+                  type="button"
+                  onClick={() => setActiveSection(section.id)}
+                  className={active ? "rounded-lg bg-white px-3 py-3 text-left text-slate-950 shadow-sm" : "rounded-lg px-3 py-3 text-left text-slate-300 transition hover:bg-white/10 hover:text-white"}
+                  aria-current={active ? "page" : undefined}
+                >
+                  <span className="block text-sm font-black">{section.label}</span>
+                  <span className={active ? "mt-1 block text-xs font-semibold text-slate-500" : "mt-1 block text-xs text-slate-500"}>{section.description}</span>
+                </button>
+              );
+            })}
+          </nav>
+
+          <div className="mt-5 rounded-lg border border-white/10 bg-white/10 p-4">
+            <p className="text-xs font-bold uppercase tracking-[0.14em] text-slate-400">Профиль</p>
+            <p className="mt-2 text-sm font-bold text-white">{currentUser.login}</p>
+            <p className="mt-1 text-xs leading-5 text-slate-400">{isGuestMode ? "Гостевой режим: данные хранятся только в этом браузере." : "Данные профиля синхронизируются с сервером."}</p>
+          </div>
+        </aside>
+
+        <div className="min-w-0 px-4 py-6 md:px-6 lg:px-8 lg:py-8">
+          {error && <div className="mb-5 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-semibold text-amber-900">{error}</div>}
+          {isLocalMode && !error && <div className="mb-5 rounded-lg border border-blue-200 bg-blue-50 px-4 py-3 text-sm font-semibold text-blue-950">Локальный режим: данные сохраняются в этом браузере.</div>}
+
+          <header className="mb-6 flex flex-col gap-4 rounded-lg border border-slate-200 bg-white p-5 shadow-sm shadow-slate-200/60 md:flex-row md:items-center md:justify-between">
+            <div>
+              <p className="text-sm font-bold uppercase tracking-[0.16em] text-blue-700">{dashboardSections.find((section) => section.id === activeSection)?.label}</p>
+              <h2 className="mt-2 text-3xl font-black tracking-tight text-slate-950">
+                {activeSection === "about" && "Обзор и логика сравнения"}
+                {activeSection === "universities" && "Вузы, профили и рейтинг"}
+                {activeSection === "profile" && "Профиль ЕГЭ"}
+                {activeSection === "settings" && "Настройки сравнения"}
+              </h2>
+              <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-500">
+                {activeSection === "about" && "Короткая сводка по данным, лучшему совпадению и тому, как считается рейтинг."}
+                {activeSection === "universities" && "Добавляйте университеты и профили обучения, а затем сравнивайте их в рейтинге."}
+                {activeSection === "profile" && "Укажите предметы и баллы ЕГЭ. Они сохраняются для справки и показываются рядом с рейтингом."}
+                {activeSection === "settings" && "Настройте вес критериев, отключите неважные параметры и проверьте режим хранения."}
+              </p>
+            </div>
+            {activeSection === "universities" && (
+              <button type="button" onClick={() => (isFormOpen ? resetForm() : setIsFormOpen(true))} className="min-h-12 rounded-lg bg-slate-950 px-5 py-3 text-center text-base font-bold text-white shadow-sm transition hover:bg-blue-700">
                 {isFormOpen ? "Скрыть форму" : "Добавить вуз"}
               </button>
-              <button type="button" onClick={() => setIsPriorityOpen(true)} className="min-h-12 rounded-lg border border-blue-200 bg-blue-50 px-5 py-3 text-center text-base font-bold text-blue-700 shadow-sm transition hover:-translate-y-0.5 hover:border-blue-300 hover:bg-blue-100">
-                Настроить приоритеты
+            )}
+            {activeSection === "settings" && (
+              <button type="button" onClick={() => setIsPriorityOpen(true)} className="min-h-12 rounded-lg bg-slate-950 px-5 py-3 text-center text-base font-bold text-white shadow-sm transition hover:bg-blue-700">
+                Открыть приоритеты
               </button>
-              <button type="button" onClick={logout} className="min-h-12 rounded-lg border border-white/20 px-5 py-3 text-center text-base font-bold text-white transition hover:bg-white/10">
-                Выйти
-              </button>
-            </div>
-          </div>
+            )}
+          </header>
 
-          <div className="rounded-lg border border-white/10 bg-white/10 p-5 shadow-2xl shadow-slate-950/25 backdrop-blur md:p-6">
-            <div className="flex items-start justify-between gap-4">
-              <div>
-                <p className="text-sm font-bold uppercase tracking-[0.16em] text-blue-200">Ваш профиль</p>
-                <h2 className="mt-2 text-2xl font-black">Баллы ЕГЭ</h2>
-              </div>
-              <div className="rounded-lg bg-white p-3 text-slate-950">
-                <p className="text-xs font-bold uppercase tracking-[0.14em] text-slate-500">Итого</p>
-                <p className="text-3xl font-black">{userExamScore}</p>
-              </div>
-            </div>
-            <ExamProfileEditor subjects={examSubjects} totalScore={userExamScore} onChange={updateExamSubject} onAdd={addExamSubject} onRemove={removeExamSubject} />
-          </div>
-        </div>
-      </section>
+          {activeSection === "about" && (
+            <div className="space-y-6">
+              <section className="grid gap-4 md:grid-cols-3">
+                <div className="rounded-lg bg-slate-950 p-5 text-white shadow-sm">
+                  <p className="text-xs font-bold uppercase tracking-[0.14em] text-slate-400">Вузов</p>
+                  <p className="mt-2 text-4xl font-black">{universityCount}</p>
+                </div>
+                <div className="rounded-lg border border-blue-100 bg-blue-50 p-5 text-blue-950 shadow-sm">
+                  <p className="text-xs font-bold uppercase tracking-[0.14em] text-blue-600">Профилей</p>
+                  <p className="mt-2 text-4xl font-black">{ratedCount}</p>
+                </div>
+                <div className="rounded-lg border border-slate-200 bg-white p-5 text-slate-950 shadow-sm shadow-slate-200/60">
+                  <p className="text-xs font-bold uppercase tracking-[0.14em] text-slate-500">Баллы ЕГЭ</p>
+                  <p className="mt-2 text-4xl font-black">{userExamScore}</p>
+                  <p className="mt-1 text-xs text-slate-500">не влияют на рейтинг</p>
+                </div>
+              </section>
 
-      <div className="mx-auto max-w-7xl px-4 py-8 md:py-10">
-        {error && <div className="mb-5 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-semibold text-amber-900">{error}</div>}
-        {isLocalMode && !error && <div className="mb-5 rounded-lg border border-blue-200 bg-blue-50 px-4 py-3 text-sm font-semibold text-blue-950">Локальный режим: данные сохраняются в этом браузере.</div>}
-
-        <section className="grid gap-5 xl:grid-cols-[0.9fr_1.1fr]">
-          <div className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm shadow-slate-200/60 md:p-6">
-            <div className="flex items-start justify-between gap-4">
-              <div>
-                <p className="text-sm font-bold uppercase tracking-[0.16em] text-blue-700">Текущие приоритеты</p>
-                <h2 className="mt-2 text-2xl font-black text-slate-950">Что важнее при сравнении</h2>
-                <p className="mt-2 text-sm leading-6 text-slate-500">Перемещайте параметры. Дорогу и общежитие можно полностью отключить.</p>
-              </div>
-              <button type="button" onClick={() => setIsPriorityOpen(true)} className="min-h-10 rounded-lg border border-slate-200 px-3 py-2 text-sm font-bold text-slate-600 transition hover:bg-slate-50">
-                Открыть
-              </button>
-            </div>
-
-            <div className="mt-5 space-y-2">
-              {priorityOrder.map((key, index) => {
-                const disabled = disabledCriteria.includes(key);
-                const optional = optionalCriteriaKeys.includes(key);
-
-                return (
-                  <div key={key} className={`grid grid-cols-[2rem_minmax(0,1fr)] gap-3 rounded-lg p-3 sm:grid-cols-[2rem_minmax(0,1fr)_auto] ${disabled ? "bg-slate-100 opacity-75" : "bg-slate-50"}`}>
-                    <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-white text-sm font-black text-slate-950 shadow-sm">{index + 1}</div>
-                    <div className="min-w-0">
-                      <div className="flex flex-wrap items-center gap-2">
-                        <p className="font-bold text-slate-950">{criteriaLabels[key]}</p>
-                        {disabled && <span className="rounded-full bg-slate-200 px-2 py-1 text-xs font-bold text-slate-600">выкл.</span>}
-                      </div>
-                      <p className="text-xs leading-5 text-slate-500">{criteriaDescriptions[key]}</p>
-                      {optional && (
-                        <button type="button" onClick={() => toggleDisabledCriterion(key)} className="mt-2 text-xs font-bold text-blue-700 hover:text-blue-900">
-                          {disabled ? "Учитывать" : "Не учитывать"}
-                        </button>
-                      )}
+              {topSpecialty ? (
+                <section className="rounded-lg border border-emerald-200 bg-emerald-50 p-5 shadow-sm shadow-emerald-100/70 md:p-6">
+                  <p className="text-sm font-bold uppercase tracking-[0.16em] text-emerald-700">Лучшее совпадение сейчас</p>
+                  <div className="mt-2 flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
+                    <div>
+                      <h3 className="text-2xl font-black text-slate-950">{topSpecialty.specialty.name}</h3>
+                      <p className="mt-1 text-sm text-emerald-900">
+                        {topSpecialty.university.name} {topSpecialty.specialty.direction ? `· ${topSpecialty.specialty.direction}` : ""} · итог {topSpecialty.score} из 100
+                      </p>
                     </div>
-                    <div className="col-span-2 flex gap-2 sm:col-span-1">
-                      <button type="button" disabled={index === 0} onClick={() => shiftPriority(key, "up")} className="h-9 w-9 rounded-lg border border-slate-200 bg-white font-black text-slate-600 transition hover:border-blue-300 hover:text-blue-700 disabled:cursor-not-allowed disabled:opacity-35" aria-label={`Поднять ${criteriaLabels[key]}`}>
-                        ↑
-                      </button>
-                      <button type="button" disabled={index === priorityOrder.length - 1} onClick={() => shiftPriority(key, "down")} className="h-9 w-9 rounded-lg border border-slate-200 bg-white font-black text-slate-600 transition hover:border-blue-300 hover:text-blue-700 disabled:cursor-not-allowed disabled:opacity-35" aria-label={`Опустить ${criteriaLabels[key]}`}>
-                        ↓
-                      </button>
+                    <button type="button" onClick={() => setActiveSection("universities")} className="rounded-lg bg-emerald-700 px-4 py-2 text-center text-sm font-bold text-white transition hover:bg-emerald-800">
+                      Смотреть рейтинг
+                    </button>
+                  </div>
+                </section>
+              ) : (
+                <section className="rounded-lg border border-dashed border-slate-300 bg-white p-8 text-center shadow-sm">
+                  <p className="text-lg font-black text-slate-950">Пока нечего сравнивать</p>
+                  <p className="mt-2 text-sm text-slate-500">Добавьте вуз и профиль обучения, чтобы увидеть лучший вариант.</p>
+                  <button type="button" onClick={() => { setActiveSection("universities"); setIsFormOpen(true); }} className="mt-4 rounded-lg bg-slate-950 px-4 py-2 text-sm font-bold text-white transition hover:bg-blue-700">
+                    Добавить вуз
+                  </button>
+                </section>
+              )}
+
+              <section className="grid gap-5 xl:grid-cols-[0.9fr_1.1fr]">
+                <div className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm shadow-slate-200/60 md:p-6">
+                  <p className="text-sm font-bold uppercase tracking-[0.16em] text-blue-700">Что важно</p>
+                  <h3 className="mt-2 text-2xl font-black text-slate-950">Текущие приоритеты</h3>
+                  <div className="mt-5 space-y-2">
+                    {priorityOrder.slice(0, 5).map((key, index) => {
+                      const disabled = disabledCriteria.includes(key);
+
+                      return (
+                        <div key={key} className={`grid grid-cols-[2rem_minmax(0,1fr)] gap-3 rounded-lg p-3 ${disabled ? "bg-slate-100 opacity-75" : "bg-slate-50"}`}>
+                          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-white text-sm font-black text-slate-950 shadow-sm">{index + 1}</div>
+                          <div className="min-w-0">
+                            <div className="flex flex-wrap items-center gap-2">
+                              <p className="font-bold text-slate-950">{criteriaLabels[key]}</p>
+                              {disabled && <span className="rounded-full bg-slate-200 px-2 py-1 text-xs font-bold text-slate-600">выкл.</span>}
+                            </div>
+                            <p className="text-xs leading-5 text-slate-500">{criteriaDescriptions[key]}</p>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                <div className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm shadow-slate-200/60 md:p-6">
+                  <p className="text-sm font-bold uppercase tracking-[0.16em] text-blue-700">Как считается</p>
+                  <h3 className="mt-2 text-2xl font-black text-slate-950">Без оценки шансов</h3>
+                  <div className="mt-5 grid gap-4 md:grid-cols-2">
+                    <div className="rounded-lg bg-slate-950 p-5 text-sm leading-7 text-slate-200">
+                      <p className="font-bold text-white">Сравниваются только факты</p>
+                      <p>Количество мест, баллы поступивших, стоимость, дорога, общежитие и ВУЦ нормализуются относительно текущего списка вариантов.</p>
+                      <p>Отключенные параметры получают вес 0 и не меняют итоговый рейтинг.</p>
+                    </div>
+                    <div className="rounded-lg bg-blue-50 p-5 text-sm leading-7 text-blue-950">
+                      <p className="font-bold">ЕГЭ не участвует в итоговой оценке</p>
+                      <p>Ваши баллы сохраняются в профиле и показываются в карточках рядом с официальными баллами поступивших.</p>
                     </div>
                   </div>
-                );
-              })}
-            </div>
-          </div>
-
-          <div className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm shadow-slate-200/60 md:p-6">
-            <p className="text-sm font-bold uppercase tracking-[0.16em] text-blue-700">Как считается</p>
-            <h2 className="mt-2 text-2xl font-black text-slate-950">Без оценки шансов</h2>
-            <div className="mt-5 grid gap-3 sm:grid-cols-3">
-              <div className="rounded-lg bg-slate-950 p-4 text-white">
-                <p className="text-xs font-bold uppercase tracking-[0.14em] text-slate-400">Вузов</p>
-                <p className="mt-1 text-3xl font-black">{universityCount}</p>
-              </div>
-              <div className="rounded-lg bg-blue-50 p-4 text-blue-950">
-                <p className="text-xs font-bold uppercase tracking-[0.14em] text-blue-600">Профилей</p>
-                <p className="mt-1 text-3xl font-black">{ratedCount}</p>
-              </div>
-              <div className="rounded-lg bg-white p-4 text-slate-700 ring-1 ring-slate-200">
-                <p className="text-xs font-bold uppercase tracking-[0.14em] text-slate-500">ЕГЭ</p>
-                <p className="mt-1 text-3xl font-black text-slate-950">{userExamScore}</p>
-                <p className="text-xs text-slate-500">не влияет на рейтинг</p>
-              </div>
-            </div>
-            <div className="mt-4 grid gap-4 md:grid-cols-2">
-              <div className="rounded-lg bg-slate-950 p-5 text-sm leading-7 text-slate-200">
-                <p className="font-bold text-white">Сравниваются только факты</p>
-                <p>Количество мест, баллы поступивших, стоимость, дорога, общежитие и ВУЦ нормализуются относительно текущего списка вариантов.</p>
-                <p>Отключенные параметры получают вес 0 и не меняют итоговый рейтинг.</p>
-              </div>
-              <div className="rounded-lg bg-blue-50 p-5 text-sm leading-7 text-blue-950">
-                <p className="font-bold">ЕГЭ не участвует в итоговой оценке</p>
-                <p>Ваши баллы сохраняются в профиле и показываются в карточках рядом с официальными баллами поступивших.</p>
-              </div>
-            </div>
-          </div>
-        </section>
-
-        {topSpecialty && (
-          <section className="mt-6 rounded-lg border border-emerald-200 bg-emerald-50 p-5 shadow-sm shadow-emerald-100/70 md:p-6">
-            <p className="text-sm font-bold uppercase tracking-[0.16em] text-emerald-700">Лучшее совпадение сейчас</p>
-            <div className="mt-2 flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
-              <div>
-                <h2 className="text-2xl font-black text-slate-950">{topSpecialty.specialty.name}</h2>
-                <p className="mt-1 text-sm text-emerald-900">
-                  {topSpecialty.university.name} {topSpecialty.specialty.direction ? `· ${topSpecialty.specialty.direction}` : ""} · итог {topSpecialty.score} из 100
-                </p>
-              </div>
-              <a href="#ratings" className="rounded-lg bg-emerald-700 px-4 py-2 text-center text-sm font-bold text-white transition hover:bg-emerald-800">
-                Смотреть рейтинг
-              </a>
-            </div>
-          </section>
-        )}
-
-        {isFormOpen && (
-          <section className="mt-6 rounded-lg border border-slate-200 bg-white p-5 shadow-sm shadow-slate-200/60 md:p-6">
-            <div className="flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
-              <div>
-                <p className="text-sm font-bold uppercase tracking-[0.16em] text-blue-700">Данные для сравнения</p>
-                <h2 className="mt-2 text-2xl font-black text-slate-950">{isEditing ? "Редактировать университет" : "Добавить университет"}</h2>
-              </div>
-              <p className="max-w-xl text-sm leading-6 text-slate-500">У вуза заполняются общие условия, а профили обучения и направления подготовки вводятся внутри него.</p>
-            </div>
-
-            <form onSubmit={saveUniversity} className="mt-6">
-              <div className="grid gap-4 lg:grid-cols-2">
-                <label>
-                  <span className="text-sm font-medium text-slate-700">Название вуза</span>
-                  <input value={draft.name} onChange={(event) => setDraft((current) => ({ ...current, name: event.target.value }))} placeholder="Например, МГТУ им. Баумана" className="mt-2 w-full rounded-lg border border-slate-200 bg-white px-3 py-3 outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-100" />
-                </label>
-                <label>
-                  <span className="text-sm font-medium text-slate-700">Город</span>
-                  <input value={draft.city} onChange={(event) => setDraft((current) => ({ ...current, city: event.target.value }))} placeholder="Москва" className="mt-2 w-full rounded-lg border border-slate-200 bg-white px-3 py-3 outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-100" />
-                </label>
-                <NumberField label="Время до университета, минут" value={draft.commuteMinutes} min={0} max={360} onChange={(value) => setDraft((current) => ({ ...current, commuteMinutes: value }))} />
-                <div className="grid gap-3 rounded-lg bg-slate-50 p-4 sm:grid-cols-2">
-                  <label className="flex items-center gap-3">
-                    <input type="checkbox" checked={draft.hasDormitory} onChange={(event) => setDraft((current) => ({ ...current, hasDormitory: event.target.checked }))} className="h-5 w-5 accent-blue-600" />
-                    <span className="text-sm font-semibold text-slate-700">Есть общежитие</span>
-                  </label>
-                  <label className="flex items-center gap-3">
-                    <input type="checkbox" checked={draft.hasMilitaryDepartment} onChange={(event) => setDraft((current) => ({ ...current, hasMilitaryDepartment: event.target.checked }))} className="h-5 w-5 accent-blue-600" />
-                    <span className="text-sm font-semibold text-slate-700">Есть ВУЦ</span>
-                  </label>
                 </div>
-              </div>
-
-              <div className="mt-6 space-y-4">
-                {draft.specialties.map((specialty, index) => (
-                  <SpecialtyFields key={index} specialty={specialty} index={index} canRemove={draft.specialties.length > 1} onChange={(patch) => updateSpecialty(index, patch)} onRemove={() => removeSpecialty(index)} />
-                ))}
-              </div>
-
-              <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                <button type="button" onClick={addSpecialty} disabled={draft.specialties.length >= 8} className="min-h-12 rounded-lg border border-blue-200 px-4 py-3 font-bold text-blue-700 transition hover:bg-blue-50 disabled:cursor-not-allowed disabled:opacity-50">
-                  Добавить профиль обучения
-                </button>
-                <div className="flex flex-col gap-2 sm:flex-row">
-                  {isEditing && (
-                    <button type="button" onClick={resetForm} className="rounded-lg border border-slate-200 px-5 py-3 font-bold text-slate-600 transition hover:bg-slate-50">
-                      Отмена
-                    </button>
-                  )}
-                  <button type="submit" disabled={isSaving} className="min-h-12 rounded-lg bg-slate-950 px-5 py-3 font-bold text-white shadow-sm transition hover:bg-blue-700 disabled:cursor-wait disabled:opacity-60">
-                    {isSaving ? "Сохраняю..." : isEditing ? "Сохранить изменения" : "Сохранить и пересчитать"}
-                  </button>
-                </div>
-              </div>
-            </form>
-          </section>
-        )}
-
-        {isPriorityOpen && <PriorityModal priorityOrder={priorityOrder} disabledCriteria={disabledCriteria} onClose={() => setIsPriorityOpen(false)} onPriorityChange={updatePriorityOrder} onDisabledCriteriaChange={updateDisabledCriteria} />}
-
-        <section id="ratings" className="mt-8">
-          <div className="mb-5 flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
-            <div>
-              <p className="text-sm font-bold uppercase tracking-[0.16em] text-blue-700">Рейтинг профилей</p>
-              <h2 className="mt-2 text-3xl font-black text-slate-950">Варианты в порядке относительного совпадения</h2>
-            </div>
-            <p className="max-w-xl text-sm leading-6 text-slate-500">Карточки пересчитываются при добавлении, редактировании, удалении вузов и перестановке приоритетов.</p>
-          </div>
-
-          {isLoading ? (
-            <div className="rounded-lg border border-slate-200 bg-white p-8 text-center text-sm font-semibold text-slate-500">Загружаю варианты...</div>
-          ) : ratedSpecialties.length === 0 ? (
-            <div className="rounded-lg border border-dashed border-slate-300 bg-white p-8 text-center">
-              <p className="text-lg font-black text-slate-950">Пока нечего сравнивать</p>
-              <p className="mt-2 text-sm text-slate-500">Добавьте хотя бы один вуз и профиль обучения, чтобы увидеть относительный рейтинг.</p>
-            </div>
-          ) : (
-            <div className="grid gap-5">
-              {ratedSpecialties.map((item) => (
-                <SpecialtyCard key={item.id} item={item} userExamScore={userExamScore} onEditUniversity={startEditUniversity} onDeleteUniversity={deleteUniversity} />
-              ))}
+              </section>
             </div>
           )}
-        </section>
+
+          {activeSection === "universities" && (
+            <div className="space-y-6">
+              {isFormOpen && (
+                <section className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm shadow-slate-200/60 md:p-6">
+                  <div className="flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
+                    <div>
+                      <p className="text-sm font-bold uppercase tracking-[0.16em] text-blue-700">Данные для сравнения</p>
+                      <h3 className="mt-2 text-2xl font-black text-slate-950">{isEditing ? "Редактировать университет" : "Добавить университет"}</h3>
+                    </div>
+                    <p className="max-w-xl text-sm leading-6 text-slate-500">У вуза заполняются общие условия, а профили обучения и направления подготовки вводятся внутри него.</p>
+                  </div>
+
+                  <form onSubmit={saveUniversity} className="mt-6">
+                    <div className="grid gap-4 lg:grid-cols-2">
+                      <label>
+                        <span className="text-sm font-medium text-slate-700">Название вуза</span>
+                        <input value={draft.name} onChange={(event) => setDraft((current) => ({ ...current, name: event.target.value }))} placeholder="Например, МГТУ им. Баумана" className="mt-2 min-h-12 w-full rounded-lg border border-slate-200 bg-white px-3 py-3 outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-100" />
+                      </label>
+                      <label>
+                        <span className="text-sm font-medium text-slate-700">Город</span>
+                        <input value={draft.city} onChange={(event) => setDraft((current) => ({ ...current, city: event.target.value }))} placeholder="Москва" className="mt-2 min-h-12 w-full rounded-lg border border-slate-200 bg-white px-3 py-3 outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-100" />
+                      </label>
+                      <NumberField label="Время до университета, минут" value={draft.commuteMinutes} min={0} max={360} onChange={(value) => setDraft((current) => ({ ...current, commuteMinutes: value }))} />
+                      <div className="grid gap-3 rounded-lg bg-slate-50 p-4 sm:grid-cols-2">
+                        <label className="flex items-center gap-3">
+                          <input type="checkbox" checked={draft.hasDormitory} onChange={(event) => setDraft((current) => ({ ...current, hasDormitory: event.target.checked }))} className="h-5 w-5 accent-blue-600" />
+                          <span className="text-sm font-semibold text-slate-700">Есть общежитие</span>
+                        </label>
+                        <label className="flex items-center gap-3">
+                          <input type="checkbox" checked={draft.hasMilitaryDepartment} onChange={(event) => setDraft((current) => ({ ...current, hasMilitaryDepartment: event.target.checked }))} className="h-5 w-5 accent-blue-600" />
+                          <span className="text-sm font-semibold text-slate-700">Есть ВУЦ</span>
+                        </label>
+                      </div>
+                    </div>
+
+                    <div className="mt-6 space-y-4">
+                      {draft.specialties.map((specialty, index) => (
+                        <SpecialtyFields key={index} specialty={specialty} index={index} canRemove={draft.specialties.length > 1} onChange={(patch) => updateSpecialty(index, patch)} onRemove={() => removeSpecialty(index)} />
+                      ))}
+                    </div>
+
+                    <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                      <button type="button" onClick={addSpecialty} disabled={draft.specialties.length >= 8} className="min-h-12 rounded-lg border border-blue-200 px-4 py-3 font-bold text-blue-700 transition hover:bg-blue-50 disabled:cursor-not-allowed disabled:opacity-50">
+                        Добавить профиль обучения
+                      </button>
+                      <div className="flex flex-col gap-2 sm:flex-row">
+                        {isEditing && (
+                          <button type="button" onClick={resetForm} className="rounded-lg border border-slate-200 px-5 py-3 font-bold text-slate-600 transition hover:bg-slate-50">
+                            Отмена
+                          </button>
+                        )}
+                        <button type="submit" disabled={isSaving} className="min-h-12 rounded-lg bg-slate-950 px-5 py-3 font-bold text-white shadow-sm transition hover:bg-blue-700 disabled:cursor-wait disabled:opacity-60">
+                          {isSaving ? "Сохраняю..." : isEditing ? "Сохранить изменения" : "Сохранить и пересчитать"}
+                        </button>
+                      </div>
+                    </div>
+                  </form>
+                </section>
+              )}
+
+              <section id="ratings">
+                <div className="mb-5 flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
+                  <div>
+                    <p className="text-sm font-bold uppercase tracking-[0.16em] text-blue-700">Рейтинг профилей</p>
+                    <h3 className="mt-2 text-3xl font-black text-slate-950">Варианты в порядке относительного совпадения</h3>
+                  </div>
+                  <p className="max-w-xl text-sm leading-6 text-slate-500">Карточки пересчитываются при добавлении, редактировании, удалении вузов и перестановке приоритетов.</p>
+                </div>
+
+                {isLoading ? (
+                  <div className="rounded-lg border border-slate-200 bg-white p-8 text-center text-sm font-semibold text-slate-500">Загружаю варианты...</div>
+                ) : ratedSpecialties.length === 0 ? (
+                  <div className="rounded-lg border border-dashed border-slate-300 bg-white p-8 text-center">
+                    <p className="text-lg font-black text-slate-950">Пока нечего сравнивать</p>
+                    <p className="mt-2 text-sm text-slate-500">Добавьте хотя бы один вуз и профиль обучения, чтобы увидеть относительный рейтинг.</p>
+                  </div>
+                ) : (
+                  <div className="grid gap-5">
+                    {ratedSpecialties.map((item) => (
+                      <SpecialtyCard key={item.id} item={item} userExamScore={userExamScore} onEditUniversity={startEditUniversity} onDeleteUniversity={deleteUniversity} />
+                    ))}
+                  </div>
+                )}
+              </section>
+            </div>
+          )}
+
+          {activeSection === "profile" && (
+            <section className="grid gap-5 xl:grid-cols-[25rem_minmax(0,1fr)]">
+              <div className="rounded-lg border border-slate-200 bg-slate-950 p-5 text-white shadow-sm md:p-6">
+                <div className="flex items-start justify-between gap-4">
+                  <div>
+                    <p className="text-sm font-bold uppercase tracking-[0.16em] text-blue-200">Ваш профиль</p>
+                    <h3 className="mt-2 text-2xl font-black">Баллы ЕГЭ</h3>
+                  </div>
+                  <div className="rounded-lg bg-white p-3 text-slate-950">
+                    <p className="text-xs font-bold uppercase tracking-[0.14em] text-slate-500">Итого</p>
+                    <p className="text-3xl font-black">{userExamScore}</p>
+                  </div>
+                </div>
+                <ExamProfileEditor subjects={examSubjects} totalScore={userExamScore} onChange={updateExamSubject} onAdd={addExamSubject} onRemove={removeExamSubject} />
+              </div>
+
+              <div className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm shadow-slate-200/60 md:p-6">
+                <p className="text-sm font-bold uppercase tracking-[0.16em] text-blue-700">Для чего это нужно</p>
+                <h3 className="mt-2 text-2xl font-black text-slate-950">Баллы отделены от рейтинга</h3>
+                <p className="mt-3 text-sm leading-7 text-slate-600">ЕГЭ показывает ваш контекст рядом с проходными, средними и максимальными баллами поступивших. Итоговый рейтинг сравнивает только параметры вузов и профилей, чтобы не выдавать ложную оценку шансов.</p>
+                <div className="mt-5 grid gap-3 sm:grid-cols-3">
+                  {cleanSubjects.map((subject) => (
+                    <div key={subject.id} className="rounded-lg bg-slate-50 p-4 ring-1 ring-slate-200">
+                      <p className="text-xs font-bold uppercase tracking-[0.12em] text-slate-500">{subject.subject}</p>
+                      <p className="mt-2 text-2xl font-black text-slate-950">{subject.score}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </section>
+          )}
+
+          {activeSection === "settings" && (
+            <div className="space-y-6">
+              <section className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm shadow-slate-200/60 md:p-6">
+                <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+                  <div>
+                    <p className="text-sm font-bold uppercase tracking-[0.16em] text-blue-700">Приоритеты</p>
+                    <h3 className="mt-2 text-2xl font-black text-slate-950">Что важнее при сравнении</h3>
+                    <p className="mt-2 text-sm leading-6 text-slate-500">Перемещайте параметры. Дорогу и общежитие можно полностью отключить.</p>
+                  </div>
+                  <button type="button" onClick={() => setIsPriorityOpen(true)} className="min-h-10 rounded-lg border border-slate-200 px-3 py-2 text-sm font-bold text-slate-600 transition hover:bg-slate-50">
+                    Открыть
+                  </button>
+                </div>
+
+                <div className="mt-5 space-y-2">
+                  {priorityOrder.map((key, index) => {
+                    const disabled = disabledCriteria.includes(key);
+                    const optional = optionalCriteriaKeys.includes(key);
+
+                    return (
+                      <div key={key} className={`grid grid-cols-[2rem_minmax(0,1fr)] gap-3 rounded-lg p-3 sm:grid-cols-[2rem_minmax(0,1fr)_auto] ${disabled ? "bg-slate-100 opacity-75" : "bg-slate-50"}`}>
+                        <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-white text-sm font-black text-slate-950 shadow-sm">{index + 1}</div>
+                        <div className="min-w-0">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <p className="font-bold text-slate-950">{criteriaLabels[key]}</p>
+                            {disabled && <span className="rounded-full bg-slate-200 px-2 py-1 text-xs font-bold text-slate-600">выкл.</span>}
+                          </div>
+                          <p className="text-xs leading-5 text-slate-500">{criteriaDescriptions[key]}</p>
+                          {optional && (
+                            <button type="button" onClick={() => toggleDisabledCriterion(key)} className="mt-2 text-xs font-bold text-blue-700 hover:text-blue-900">
+                              {disabled ? "Учитывать" : "Не учитывать"}
+                            </button>
+                          )}
+                        </div>
+                        <div className="col-span-2 flex gap-2 sm:col-span-1">
+                          <button type="button" disabled={index === 0} onClick={() => shiftPriority(key, "up")} className="h-9 w-9 rounded-lg border border-slate-200 bg-white font-black text-slate-600 transition hover:border-blue-300 hover:text-blue-700 disabled:cursor-not-allowed disabled:opacity-35" aria-label={`Поднять ${criteriaLabels[key]}`}>
+                            ↑
+                          </button>
+                          <button type="button" disabled={index === priorityOrder.length - 1} onClick={() => shiftPriority(key, "down")} className="h-9 w-9 rounded-lg border border-slate-200 bg-white font-black text-slate-600 transition hover:border-blue-300 hover:text-blue-700 disabled:cursor-not-allowed disabled:opacity-35" aria-label={`Опустить ${criteriaLabels[key]}`}>
+                            ↓
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </section>
+
+              <section className="grid gap-5 md:grid-cols-2">
+                <div className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm shadow-slate-200/60">
+                  <p className="text-sm font-bold uppercase tracking-[0.16em] text-blue-700">Аккаунт</p>
+                  <h3 className="mt-2 text-2xl font-black text-slate-950">{currentUser.login}</h3>
+                  <p className="mt-2 text-sm leading-6 text-slate-500">{isGuestMode ? "Гость работает без регистрации. Данные сохраняются локально и доступны только в этом браузере." : "Вы вошли в профиль. Данные сохраняются на сервере, а локальная копия используется как резерв."}</p>
+                  <button type="button" onClick={logout} className="mt-5 min-h-10 rounded-lg border border-slate-200 px-4 py-2 text-sm font-bold text-slate-600 transition hover:bg-slate-50">
+                    Выйти
+                  </button>
+                </div>
+                <div className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm shadow-slate-200/60">
+                  <p className="text-sm font-bold uppercase tracking-[0.16em] text-blue-700">Хранение</p>
+                  <h3 className="mt-2 text-2xl font-black text-slate-950">{isLocalMode ? "Локальный режим" : "Серверный режим"}</h3>
+                  <p className="mt-2 text-sm leading-6 text-slate-500">Локальный режим использует localStorage. Он полезен для гостя и как fallback, если база временно недоступна.</p>
+                </div>
+              </section>
+            </div>
+          )}
+
+          {isPriorityOpen && <PriorityModal priorityOrder={priorityOrder} disabledCriteria={disabledCriteria} onClose={() => setIsPriorityOpen(false)} onPriorityChange={updatePriorityOrder} onDisabledCriteriaChange={updateDisabledCriteria} />}
+        </div>
       </div>
     </main>
   );
