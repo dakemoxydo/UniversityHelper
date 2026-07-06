@@ -51,7 +51,7 @@ export type RatedSpecialty = {
   score: number;
 };
 
-export const maxExamScore = 400;
+export const maxExamScore = 500;
 export const hundredPointBenefitApproximation = 25;
 
 export const defaultWeights: Weights = {

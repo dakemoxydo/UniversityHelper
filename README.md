@@ -7,7 +7,8 @@ University Helper is a web calculator for applicants. It turns subjective trade-
 - Stores universities and programs in PostgreSQL through Drizzle ORM.
 - Falls back to browser local storage when `DATABASE_URL` is not configured, so the calculator is still usable in demo mode.
 - Calculates a 0-100 score with a weighted sum model.
-- Lets the applicant tune criteria weights or use presets.
+- Builds the applicant profile from individual exam subjects and scores, with at least three subjects.
+- Lets the applicant tune criteria weights through a short preference survey, presets, or manual settings.
 - Explains each recommendation with strengths and risks.
 
 ## Scoring criteria

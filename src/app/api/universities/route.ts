@@ -29,7 +29,7 @@ function validateSpecialty(input: Partial<SpecialtyInput>): SpecialtyInput | nul
 
   return {
     name,
-    passingScore: toIntegerInRange(input.passingScore, 0, 400),
+    passingScore: toIntegerInRange(input.passingScore, 0, 500),
     tuitionCost: toIntegerInRange(input.tuitionCost, 0, 5_000_000),
     budgetSeats: toIntegerInRange(input.budgetSeats, 0, 10_000),
     paidSeats: toIntegerInRange(input.paidSeats, 0, 10_000),
