@@ -40,6 +40,8 @@ DATABASE_URL=postgresql://user:password@host/database?sslmode=require
 
 Add it for Production, Preview, and Development if you want all Vercel environments to use the same database.
 
+For Neon, prefer a URL ending with `?sslmode=require`. If Neon gives you `&channel_binding=require`, remove that extra parameter for this Node.js app; the application also strips it defensively before connecting.
+
 ## 4. Apply database migrations
 
 Before people register or log in, apply the Drizzle migrations to the hosted database.

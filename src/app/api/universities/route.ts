@@ -1,9 +1,12 @@
 import { requireDb } from "@/db";
+import { databaseErrorResponse } from "@/lib/api-responses";
 import { getCurrentUser } from "@/lib/auth";
 import { specialties, universities } from "@/db/schema";
 import type { AdmissionBasis, SpecialtyInput, University, UniversityInput } from "@/lib/university-calculator";
 import { and, asc, desc, eq } from "drizzle-orm";
 import { NextRequest, NextResponse } from "next/server";
+
+export const runtime = "nodejs";
 
 const admissionBases = new Set<AdmissionBasis>(["budget", "paid", "both"]);
 
@@ -178,7 +181,13 @@ export async function GET() {
     return databaseUnavailableResponse();
   }
 
-  const user = await getCurrentUser();
+  let user: Awaited<ReturnType<typeof getCurrentUser>>;
+
+  try {
+    user = await getCurrentUser();
+  } catch (error) {
+    return databaseErrorResponse(error, "Не удалось проверить сессию.");
+  }
 
   if (!user) {
     return unauthorizedResponse();
@@ -261,7 +270,13 @@ export async function POST(request: NextRequest) {
     return databaseUnavailableResponse();
   }
 
-  const user = await getCurrentUser();
+  let user: Awaited<ReturnType<typeof getCurrentUser>>;
+
+  try {
+    user = await getCurrentUser();
+  } catch (error) {
+    return databaseErrorResponse(error, "Не удалось проверить сессию.");
+  }
 
   if (!user) {
     return unauthorizedResponse();
@@ -303,7 +318,13 @@ export async function PUT(request: NextRequest) {
     return databaseUnavailableResponse();
   }
 
-  const user = await getCurrentUser();
+  let user: Awaited<ReturnType<typeof getCurrentUser>>;
+
+  try {
+    user = await getCurrentUser();
+  } catch (error) {
+    return databaseErrorResponse(error, "Не удалось проверить сессию.");
+  }
 
   if (!user) {
     return unauthorizedResponse();
@@ -386,7 +407,13 @@ export async function DELETE(request: NextRequest) {
     return databaseUnavailableResponse();
   }
 
-  const user = await getCurrentUser();
+  let user: Awaited<ReturnType<typeof getCurrentUser>>;
+
+  try {
+    user = await getCurrentUser();
+  } catch (error) {
+    return databaseErrorResponse(error, "Не удалось проверить сессию.");
+  }
 
   if (!user) {
     return unauthorizedResponse();

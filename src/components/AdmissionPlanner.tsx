@@ -182,6 +182,14 @@ function readDisabledCriteria() {
   }
 }
 
+
+async function readApiJson<T>(response: Response): Promise<T> {
+  try {
+    return (await response.json()) as T;
+  } catch {
+    return {} as T;
+  }
+}
 function localUniversityFromDraft(input: UniversityInput, previous?: University): University {
   const universityId = previous?.id ?? Date.now();
 
@@ -216,6 +224,7 @@ export default function AdmissionPlanner() {
   const [authLogin, setAuthLogin] = useState("");
   const [authPassword, setAuthPassword] = useState("");
   const [authError, setAuthError] = useState<string | null>(null);
+  const [isAuthSubmitting, setIsAuthSubmitting] = useState(false);
 
   const cleanSubjects = useMemo(() => cleanExamSubjects(examSubjects), [examSubjects]);
   const userExamScore = useMemo(() => cleanSubjects.reduce((sum, subject) => sum + subject.score, 0), [cleanSubjects]);
@@ -229,7 +238,7 @@ export default function AdmissionPlanner() {
     async function loadSession() {
       try {
         const response = await fetch("/api/auth/session", { cache: "no-store" });
-        const data = (await response.json()) as { user?: AuthUser | null; error?: string };
+        const data = await readApiJson<{ user?: AuthUser | null; error?: string }>(response);
 
         if (!response.ok) {
           throw new Error(data.error ?? "Не удалось проверить сессию.");
@@ -261,7 +270,7 @@ export default function AdmissionPlanner() {
 
       try {
         const profileResponse = await fetch("/api/profile", { cache: "no-store" });
-        const profileData = (await profileResponse.json()) as { profile?: ProfilePayload; error?: string };
+        const profileData = await readApiJson<{ profile?: ProfilePayload; error?: string }>(profileResponse);
 
         if (!profileResponse.ok) {
           throw new Error(profileData.error ?? "Не удалось загрузить профиль.");
@@ -282,7 +291,7 @@ export default function AdmissionPlanner() {
 
       try {
         const response = await fetch("/api/universities", { cache: "no-store" });
-        const data = (await response.json()) as { universities?: University[]; error?: string };
+        const data = await readApiJson<{ universities?: University[]; error?: string }>(response);
 
         if (!response.ok) {
           throw new Error(data.error ?? "Не удалось загрузить университеты.");
@@ -354,7 +363,13 @@ export default function AdmissionPlanner() {
 
   async function submitAuth(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+
+    if (isAuthSubmitting) {
+      return;
+    }
+
     setAuthError(null);
+    setIsAuthSubmitting(true);
 
     try {
       const response = await fetch(authMode === "login" ? "/api/auth/login" : "/api/auth/register", {
@@ -362,7 +377,7 @@ export default function AdmissionPlanner() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ login: authLogin, password: authPassword }),
       });
-      const data = (await response.json()) as { user?: AuthUser; error?: string };
+      const data = await readApiJson<{ user?: AuthUser; error?: string }>(response);
 
       if (!response.ok || !data.user) {
         throw new Error(data.error ?? "Не удалось войти.");
@@ -374,6 +389,8 @@ export default function AdmissionPlanner() {
       setIsLoading(true);
     } catch (authSubmitError) {
       setAuthError(authSubmitError instanceof Error ? authSubmitError.message : "Не удалось войти.");
+    } finally {
+      setIsAuthSubmitting(false);
     }
   }
 
@@ -492,7 +509,7 @@ export default function AdmissionPlanner() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(cleaned),
       });
-      const data = (await response.json()) as { university?: University; error?: string };
+      const data = await readApiJson<{ university?: University; error?: string }>(response);
 
       if (!response.ok || !data.university) {
         throw new Error(data.error ?? "Не удалось сохранить университет.");
@@ -522,7 +539,7 @@ export default function AdmissionPlanner() {
 
     try {
       const response = await fetch(`/api/universities?id=${id}`, { method: "DELETE" });
-      const data = (await response.json()) as { error?: string };
+      const data = await readApiJson<{ error?: string }>(response);
 
       if (!response.ok) {
         throw new Error(data.error ?? "Не удалось удалить университет.");
@@ -567,8 +584,8 @@ export default function AdmissionPlanner() {
               <span className="text-sm font-semibold text-slate-200">Пароль</span>
               <input type="password" value={authPassword} onChange={(event) => setAuthPassword(event.target.value)} autoComplete={authMode === "login" ? "current-password" : "new-password"} className="mt-2 w-full rounded-lg border border-white/10 bg-slate-900 px-3 py-3 text-white outline-none transition focus:border-blue-300 focus:ring-4 focus:ring-blue-400/20" />
             </label>
-            <button type="submit" className="w-full rounded-lg bg-white px-5 py-3 text-base font-bold text-slate-950 transition hover:bg-blue-50">
-              {authMode === "login" ? "Войти" : "Создать профиль"}
+            <button type="submit" disabled={isAuthSubmitting} className="w-full rounded-lg bg-white px-5 py-3 text-base font-bold text-slate-950 transition hover:bg-blue-50 disabled:cursor-wait disabled:opacity-60">
+              {isAuthSubmitting ? "Проверяю..." : authMode === "login" ? "Войти" : "Создать профиль"}
             </button>
           </form>
 

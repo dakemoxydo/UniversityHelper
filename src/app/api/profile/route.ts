@@ -1,9 +1,12 @@
 import { requireDb } from "@/db";
 import { profiles } from "@/db/schema";
+import { databaseErrorResponse } from "@/lib/api-responses";
 import { getCurrentUser } from "@/lib/auth";
 import { defaultPriorityOrder, normalizeDisabledCriteria, normalizePriorityOrder, type CriteriaKey } from "@/lib/university-calculator";
 import { eq } from "drizzle-orm";
 import { NextResponse } from "next/server";
+
+export const runtime = "nodejs";
 
 type ExamSubjectScore = {
   id: string;
@@ -70,14 +73,18 @@ export async function GET() {
     return NextResponse.json({ error: "DATABASE_URL не настроен." }, { status: 503 });
   }
 
-  const user = await getCurrentUser();
+  try {
+    const user = await getCurrentUser();
 
-  if (!user) {
-    return unauthorizedResponse();
+    if (!user) {
+      return unauthorizedResponse();
+    }
+
+    const [profile] = await database.select().from(profiles).where(eq(profiles.userId, user.id)).limit(1);
+    return NextResponse.json({ profile: profileResult(profile) });
+  } catch (error) {
+    return databaseErrorResponse(error, "Не удалось загрузить профиль.");
   }
-
-  const [profile] = await database.select().from(profiles).where(eq(profiles.userId, user.id)).limit(1);
-  return NextResponse.json({ profile: profileResult(profile) });
 }
 
 export async function PUT(request: Request) {
@@ -89,43 +96,47 @@ export async function PUT(request: Request) {
     return NextResponse.json({ error: "DATABASE_URL не настроен." }, { status: 503 });
   }
 
-  const user = await getCurrentUser();
+  try {
+    const user = await getCurrentUser();
 
-  if (!user) {
-    return unauthorizedResponse();
-  }
+    if (!user) {
+      return unauthorizedResponse();
+    }
 
-  const body = (await request.json().catch(() => null)) as {
-    examSubjects?: unknown;
-    priorityOrder?: unknown;
-    disabledCriteria?: unknown;
-  } | null;
-  const profile = profileResult({
-    userId: user.id,
-    examSubjects: body?.examSubjects ?? defaultExamSubjects,
-    priorityOrder: body?.priorityOrder ?? defaultPriorityOrder,
-    disabledCriteria: body?.disabledCriteria ?? [],
-    updatedAt: new Date(),
-  });
-
-  await database
-    .insert(profiles)
-    .values({
+    const body = (await request.json().catch(() => null)) as {
+      examSubjects?: unknown;
+      priorityOrder?: unknown;
+      disabledCriteria?: unknown;
+    } | null;
+    const profile = profileResult({
       userId: user.id,
-      examSubjects: profile.examSubjects,
-      priorityOrder: profile.priorityOrder,
-      disabledCriteria: profile.disabledCriteria,
+      examSubjects: body?.examSubjects ?? defaultExamSubjects,
+      priorityOrder: body?.priorityOrder ?? defaultPriorityOrder,
+      disabledCriteria: body?.disabledCriteria ?? [],
       updatedAt: new Date(),
-    })
-    .onConflictDoUpdate({
-      target: profiles.userId,
-      set: {
+    });
+
+    await database
+      .insert(profiles)
+      .values({
+        userId: user.id,
         examSubjects: profile.examSubjects,
         priorityOrder: profile.priorityOrder,
         disabledCriteria: profile.disabledCriteria,
         updatedAt: new Date(),
-      },
-    });
+      })
+      .onConflictDoUpdate({
+        target: profiles.userId,
+        set: {
+          examSubjects: profile.examSubjects,
+          priorityOrder: profile.priorityOrder,
+          disabledCriteria: profile.disabledCriteria,
+          updatedAt: new Date(),
+        },
+      });
 
-  return NextResponse.json({ profile });
+    return NextResponse.json({ profile });
+  } catch (error) {
+    return databaseErrorResponse(error, "Не удалось сохранить профиль.");
+  }
 }

@@ -1,8 +1,11 @@
 import { requireDb } from "@/db";
 import { profiles, users } from "@/db/schema";
+import { databaseErrorResponse, isUniqueViolation } from "@/lib/api-responses";
 import { createSession, hashPassword, normalizeLogin, validatePassword } from "@/lib/auth";
 import { eq } from "drizzle-orm";
 import { NextResponse } from "next/server";
+
+export const runtime = "nodejs";
 
 export async function POST(request: Request) {
   let database: ReturnType<typeof requireDb>;
@@ -21,20 +24,36 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Логин должен быть не короче 3 символов." }, { status: 400 });
   }
 
+  if (!/^[a-z0-9._-]+$/.test(login)) {
+    return NextResponse.json({ error: "Логин может содержать латинские буквы, цифры, точку, дефис и подчёркивание." }, { status: 400 });
+  }
+
   if (password.length < 4) {
     return NextResponse.json({ error: "Пароль должен быть не короче 4 символов." }, { status: 400 });
   }
 
-  const [existingUser] = await database.select({ id: users.id }).from(users).where(eq(users.login, login)).limit(1);
+  try {
+    const [existingUser] = await database.select({ id: users.id }).from(users).where(eq(users.login, login)).limit(1);
 
-  if (existingUser) {
-    return NextResponse.json({ error: "Такой логин уже занят." }, { status: 409 });
+    if (existingUser) {
+      return NextResponse.json({ error: "Такой логин уже занят." }, { status: 409 });
+    }
+
+    const passwordHash = await hashPassword(password);
+    const user = await database.transaction(async (tx) => {
+      const [createdUser] = await tx.insert(users).values({ login, passwordHash }).returning({ id: users.id, login: users.login });
+      await tx.insert(profiles).values({ userId: createdUser.id }).onConflictDoNothing();
+      return createdUser;
+    });
+
+    await createSession(user.id);
+
+    return NextResponse.json({ user }, { status: 201 });
+  } catch (error) {
+    if (isUniqueViolation(error)) {
+      return NextResponse.json({ error: "Такой логин уже занят." }, { status: 409 });
+    }
+
+    return databaseErrorResponse(error, "Не удалось создать профиль.");
   }
-
-  const passwordHash = await hashPassword(password);
-  const [user] = await database.insert(users).values({ login, passwordHash }).returning({ id: users.id, login: users.login });
-  await database.insert(profiles).values({ userId: user.id });
-  await createSession(user.id);
-
-  return NextResponse.json({ user }, { status: 201 });
 }
